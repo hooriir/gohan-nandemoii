@@ -1,17 +1,6 @@
-body {
-    background-color: #53CAF1;
-}
-
 .container {
-  min-height: 100vh;
-  background-color: #53CAF1;
   display: flex;
   flex-direction: row;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  color: #fff;
-  padding: 24px;
 }
 
 .guest {
