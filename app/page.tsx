@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import styles from "./page.module.css";
 import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
 
@@ -10,85 +9,94 @@ export default function Home() {
   const isLoggedIn = !!session;
 
   return (
-    <main className={styles.container}>
-      <div className={styles.textArea}>
-        <p className={styles.guest}>
+    // 画面全体をブランドカラーの水色にし、縦並びで中央寄せにする
+    <main className="bg-brand-bg min-h-screen flex flex-col items-center justify-center p-6 select-none">
+      
+      {/* テキスト・タイトルエリア */}
+      <div className="text-center mb-12">
+        <p className="text-white font-bold text-lg tracking-wider mb-2 drop-shadow-sm">
           {isLoggedIn ? `${session.user?.name ?? "ユーザー"}さんの` : "ゲストさんの"}
         </p>
 
-        <h1 className={styles.title}>
+        <h1 className="flex justify-center transform hover:scale-102 transition-transform duration-300">
           <Image
             src="/images/title.svg"
             alt="ごはん？なんでもいい～"
-            width={537}
-            height={251}
-            
+            width={360}
+            height={168}
+            priority
           />
         </h1>
       </div>
 
-      <div className={styles.iconArea}>
-        {/* ごはん画像 */}
-        <div className={styles.iconBlock}>
+      {/* アイコン（メニュー）エリア */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-12 sm:gap-16 w-full max-w-lg">
+        
+        {/* 左側：ごはん画像（マイページ または 新規登録） */}
+        <div className="relative flex items-center justify-center group cursor-pointer transform hover:scale-105 hover:rotate-2 transition-all duration-200">
           {isLoggedIn ? (
-            <Link href="/mypage">
-              <span className={styles.iconLabel}>
+            <Link href="/mypage" className="relative flex items-center justify-center">
+              <Image
+                src="/images/gohan.svg"
+                alt="マイページ"
+                width={160}
+                height={127}
+              />
+              {/* 白背景や枠線をなくし、文字だけに。ホバーでブランド赤色に変化 */}
+              <span className="absolute bottom-[26%] text-slate-700 font-black text-sm tracking-wider group-hover:text-brand-red transition-colors duration-200">
                 マイページ
               </span>
-                <Image
-                  src="/images/gohan.svg"
-                  alt="マイページ"
-                  width={180}
-                  height={143}
-                  className={styles.icon}
-                />
             </Link>
           ) : (
-            <Link href="/signup" className={styles.iconLink}>
-              <span className={styles.iconLabel}>
+            <Link href="/register" className="relative flex items-center justify-center">
+              <Image
+                src="/images/gohan.svg"
+                alt="新規登録"
+                width={160}
+                height={127}
+              />
+              {/* 白背景や枠線をなくし、文字だけに。ホバーでブランド赤色に変化 */}
+              <span className="absolute bottom-[26%] text-slate-700 font-black text-sm tracking-wider group-hover:text-brand-red transition-colors duration-200">
                 新規登録
               </span>
-                <Image
-                  src="/images/gohan.svg"
-                  alt="新規登録"
-                  width={271}
-                  height={61}
-                  className={styles.icon}
-                />
             </Link>
           )}
         </div>
 
-        {/* はし画像 */}
-        <div className={styles.iconBlock}>
+        {/* 右側：はし画像（ログアウト または ログイン） */}
+        <div className="relative flex items-center justify-center group cursor-pointer transform hover:scale-105 hover:-rotate-2 transition-all duration-200">
           {isLoggedIn ? (
-            <button className={`${styles.buttonReset} ${styles.iconLink}`} onClick={() => signOut()}>
-              <span className={`${styles.iconLabel} ${styles.hashiLabel}`}>
-                ログイン
-              </span>
+            <button 
+              className="bg-transparent border-none p-0 relative flex items-center justify-center cursor-pointer outline-none" 
+              onClick={() => signOut()}
+            >
               <Image
-                  src="/images/hashi.svg"
-                  alt="ログアウト"
-                  width={271}
-                  height={61}
-                  className={styles.icon}
-                />
+                src="/images/hashi.svg"
+                alt="ログアウト"
+                width={180}
+                height={40}
+              />
+              {/* 白背景や枠線をなくし、文字だけに。ホバーでブランド水色に変化 */}
+              <span className="absolute bottom-[30%] text-slate-700 font-black text-xs tracking-wider group-hover:text-brand-blue transition-colors duration-200">
+                ログアウト
+              </span>
             </button>
           ) : (
-            <Link href="/login" className={styles.iconLink}>
-              <span className={`${styles.iconLabel} ${styles.hashiLabel}`}>
+            <Link href="/login" className="relative flex items-center justify-center">
+              <Image
+                src="/images/hashi.svg"
+                alt="ログイン"
+                width={180}
+                height={40}
+              />
+              {/* 白背景や枠線をなくし、文字だけに。ホバーでブランド水色に変化 */}
+              <span className="absolute bottom-[30%] text-slate-700 font-black text-xs tracking-wider group-hover:text-brand-blue transition-colors duration-200">
                 ログイン
               </span>
-              <Image
-                  src="/images/hashi.svg"
-                  alt="ログイン"
-                  width={271}
-                  height={61}
-                  className={styles.icon}
-                />
             </Link>
           )}
         </div>
+
       </div>
     </main>
   );

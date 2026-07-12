@@ -1,21 +1,9 @@
 /* app/globals.css */
+@import "tailwindcss";
 
-html, body {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: sans-serif;
-}
-
-
-body {
-  min-height: 100vh;
-  background-color: #53CAF1; /* 統一した水色 */
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  color: #ffffff;
-  padding: 24px;
+/* アプリのオリジナルカラーをv4の方式で登録します */
+@theme {
+  --color-brand-bg: #50C7F4;    /* メイン背景(水色) */
+  --color-brand-red: #E50000;   /* 新規登録(赤) */
+  --color-brand-blue: #53BDED;  /* ログイン(濃い水色) */
 }

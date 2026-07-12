@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,14 +10,60 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// 1. ユーザーテーブル
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
   name          String
   password      String
+  favoriteFoods String?  // 好きな料理のメモ等
 
-  favoriteFoods String?
+  // リレーション（関係性）の定義
+  dishes       Dish[]        // ユーザーが登録したごはん一覧
+  showLogs     DishShowLog[] // ユーザーの検索・表示履歴一覧
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// 2. dishesテーブル（ごはん）
+model Dish {
+  id        String   @id @default(cuid())
+  userId    String   // 登録したユーザーのID
+  name      String   // ごはん名
+  imageUrl  String?  // ごはん画像（Supabase StorageのURL等を想定して省略可能に）
+  
+  // リレーションの定義
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags      Tag[]         // このごはんに紐づくキーワード（多対多）
+  showLogs  DishShowLog[] // このごはんの表示履歴（一対多）
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// 3. tagsテーブル（キーワード）
+model Tag {
+  id        String   @id @default(cuid())
+  name      String   @unique // タグ名（「さっぱり」「肉」などが重複しないようuniqueに）
+  
+  // リレーションの定義
+  dishes    Dish[]   // このタグを持つごはん一覧（多対多）
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// 4. dish_show_logsテーブル（ごはん表示履歴）
+model DishShowLog {
+  id        Int      @id @default(autoincrement()) // 履歴は自動連番の数値が扱いやすいためIntに
+  userId    String   // 履歴の所有ユーザーID
+  dishId    String   // 表示されたごはんID
+  keyword   String?  // 検索時のキーワード（「なんでもいい」等の場合は空もあり得るため省略可能に）
+
+  // リレーションの定義
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dish      Dish     @relation(fields: [dishId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) // 検索表示した日時
 }

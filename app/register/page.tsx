@@ -1,54 +1,63 @@
-import styles from "./register.module.css";
+import Image from "next/image";
 import { registerUser } from "../actions";
+import Button from "@/components/Button";
 
-export default async function RegisterPage(props: {
-    searchParams: Promise<{ error?: string }>;
-}) {
-    const searchParams = await props.searchParams;
-    const error = searchParams.error;
-
-    return (
-        <div className={styles.container}>
-      <div className={styles.card}>
-        {/* ロゴ部分 */}
-        <div className={styles.logoArea}>
-          <h1 className={styles.logoTitle}>ごはん？</h1>
-          <p className={styles.logoSubtitle}>なんでもいい〜</p>
-        </div>
-
-        <h2 className={styles.title}>新規登録</h2>
-
-        {/* エラーメッセージがあれば表示 */}
-        {error && <p className={styles.error}>{error}</p>}
-
-        {/* バックエンドの処理（Server Actions）を直接呼び出す */}
-        <form action={registerUser} className={styles.form}>
-          <input
-            type="text"
-            name="name"
-            placeholder="ユーザー名"
-            required
-            className={styles.input}
+export default function RegisterPage() {
+  return (
+    <div className="bg-brand-bg min-h-screen flex items-center justify-center p-4">
+      <div className="bg-white p-10 rounded-2xl shadow-xl w-full max-w-[400px] text-center">
+        
+        <h1 className="flex justify-center mb-2">
+          <Image
+            src="/images/gohan_bl.svg"
+            alt="ごはん？なんでもいい～"
+            width={160}
+            height={72}          
           />
-          <input
-            type="email"
-            name="email"
-            placeholder="メールアドレス"
-            required
-            className={styles.input}
-          />
-          <input
-            type="password"
-            name="password"
-            placeholder="パスワード"
-            required
-            className={styles.input}
-          />
-          <button type="submit" className={styles.submitButton}>
-            新規登録
-          </button>
+        </h1>
+        
+        <h2 className="text-xl font-bold text-slate-700 mb-8">新規登録</h2>
+
+        {/* registerUser が何も返さなくなったため、直接渡すだけで型エラーが消えます */}
+        <form action={registerUser} className="space-y-5 text-left">
+          
+          <div>
+            <label className="block text-xs font-bold text-slate-500 mb-1 ml-1">お名前</label>
+            <input
+              type="text"
+              name="name"
+              required
+              placeholder="ごはん 太郎"
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition-all text-slate-800 placeholder:text-slate-300"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-500 mb-1 ml-1">メールアドレス</label>
+            <input
+              type="email"
+              name="email"
+              required
+              placeholder="example@email.com"
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition-all text-slate-800 placeholder:text-slate-300"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-500 mb-1 ml-1">パスワード</label>
+            <input
+              type="password"
+              name="password"
+              required
+              placeholder="••••••••"
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition-all text-slate-800 placeholder:text-slate-300"
+            />
+          </div>
+
+          <Button type="submit" text="登録する" variant="red" />
+          
         </form>
       </div>
     </div>
-    )
+  );
 }
