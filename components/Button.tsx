@@ -3,6 +3,7 @@ type ButtonProps = {
   text: string;
   variant?: 'red' | 'blue';
   type?: 'button' | 'submit';
+  onClick?: () => void;
 };
 
 export default function Button({ text, variant = 'red', type = 'button' }: ButtonProps) {

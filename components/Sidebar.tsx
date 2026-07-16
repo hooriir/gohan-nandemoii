@@ -3,6 +3,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -21,22 +22,22 @@ export default function Sidebar() {
     <div className="w-full md:w-[160px] flex md:flex-col gap-3 shrink-0">
       
       {/* プロフィール */}
-      <Link href="/profile" className={getButtonClass('/profile')}>
-        <span className="bg-brand-red text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs mb-1">丼</span>
+      <Link href="/mypage/profile" className={getButtonClass('/mypage/profile')}>
+        <Image src="/images/ume.svg" width={53} height={46} alt='うめぼし' className="w-10 h-10 mb-1" />
         <span className="text-[10px] font-bold">プロフィール</span>
       </Link>
       
       {/* ごはん登録・一覧 */}
       <Link href="/menus" className={getButtonClass('/menus')}>
-        <span className="bg-brand-red text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs mb-1">丼</span>
+        <Image src="/images/chawan.svg" width={80} height={46} alt='茶碗' className="w-10 h-10 mb-1" />
         <span className="text-[10px] font-bold">ごはん登録・一覧</span>
       </Link>
       
       {/* パスワード変更 */}
-      <Link href="/password" className={getButtonClass('/password')}>
-        <span className="bg-brand-red text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs mb-1">丼</span>
+      {/* <Link href="/password" className={getButtonClass('/password')}>
+        <Image src="/images/ume.svg" width={53} height={46} alt='うめぼし' className="w-10 h-10 mb-1" />
         <span className="text-[10px] font-bold">パスワード変更</span>
-      </Link>
+      </Link> */}
 
     </div>
   );

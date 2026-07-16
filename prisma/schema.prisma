@@ -56,14 +56,14 @@ model Tag {
 
 // 4. dish_show_logsテーブル（ごはん表示履歴）
 model DishShowLog {
-  id        Int      @id @default(autoincrement()) // 履歴は自動連番の数値が扱いやすいためIntに
-  userId    String   // 履歴の所有ユーザーID
-  dishId    String   // 表示されたごはんID
-  keyword   String?  // 検索時のキーワード（「なんでもいい」等の場合は空もあり得るため省略可能に）
+  id        Int      @id @default(autoincrement())
+  userId    String   
+  dishId    String   
+  keyword   String?  
 
   // リレーションの定義
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   dish      Dish     @relation(fields: [dishId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now()) // 検索表示した日時
+  createdAt DateTime @default(now())
 }
