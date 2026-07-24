@@ -29,14 +29,6 @@ export default function MyPageTop() {
     checkUser();
   }, [supabase, router]);
 
-  const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut();
-      router.push('/login');
-    } catch (error) {
-      console.error("ログアウトエラー:", error);
-    }
-  };
 
   // 読み込み中の表示
   if (loading) {
@@ -83,17 +75,6 @@ export default function MyPageTop() {
               ごはん登録・一覧
             </span>
           </button>
-
-          {/* 3. パスワード変更カード */}
-          {/* <button 
-            onClick={() => router.push('/mypage/password')}
-            className="group bg-white rounded-2xl p-6 flex flex-col items-center justify-center shadow-lg hover:scale-105 transition transform aspect-square"
-          >
-            <Image src="/images/ume.svg" width={84} height={74} alt="うめぼし" className="w-16 h-16 mb-4" />
-            <span className="text-gray-700 font-bold text-sm group-hover:text-brand-red transition-colors duration-200">
-              パスワード変更
-            </span>
-          </button> */}
 
         </div>
       </main>

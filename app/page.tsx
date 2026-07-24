@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Header from "@/components/Header";
 import { createClient } from "@/utils/supabase/client";
@@ -19,7 +19,6 @@ interface RecommendResponse {
 }
 
 function HomePageContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
 
@@ -55,51 +54,51 @@ function HomePageContent() {
   }, [supabase]);
 
   // 検索・APIリクエスト処理
-  const handleSearch = async (searchKeyword: string) => {
-    if (!userId) return;
+  const handleSearch = useCallback(async (searchKeyword: string) => {
+  if (!userId) return;
 
-    const cleanKeyword = searchKeyword.trim() || "なんでもいい";
-    setKeyword(cleanKeyword);
-    setHasSearched(true);
-    setLoading(true);
-    setError(null);
+  const cleanKeyword = searchKeyword.trim() || "なんでもいい";
+  setKeyword(cleanKeyword);
+  setHasSearched(true);
+  setLoading(true);
+  setError(null);
 
-    try {
-      const response = await fetch("/api/recommend", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: userId,
-          keyword: cleanKeyword,
-        }),
-      });
+  try {
+    const response = await fetch("/api/recommend", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: userId,
+        keyword: cleanKeyword,
+      }),
+    });
 
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "メニューの決定に失敗しました。");
-      }
-
-      const data: RecommendResponse = await response.json();
-      setResult(data);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "予期せぬエラーが発生しました。";
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.error || "メニューの決定に失敗しました。");
     }
-  };
+
+    const data: RecommendResponse = await response.json();
+    setResult(data);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "予期せぬエラーが発生しました。";
+    setError(errorMessage);
+  } finally {
+    setLoading(false);
+  }
+}, [userId]);
   
   useEffect(() => {
-    const queryKeyword = searchParams.get("keyword");
-    if (queryKeyword !== null) {
-      const timer = setTimeout(() => {
-        handleSearch(queryKeyword);
-      }, 0);
-      return () => clearTimeout(timer);
-    }
-  }, [searchParams, userId]);
+  const queryKeyword = searchParams.get("keyword");
+  if (queryKeyword !== null) {
+    const timer = setTimeout(() => {
+      handleSearch(queryKeyword);
+    }, 0);
+    return () => clearTimeout(timer);
+  }
+}, [searchParams, handleSearch]);
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,7 +116,7 @@ function HomePageContent() {
 
   return (
     /* 
-      💡 ログイン状態によって配置を切り替えます
+      ログイン状態によって配置を切り替えます
       - 未ログイン時：justify-center（画面の上下中央に配置）
       - ログイン済：justify-start（画面上部から順番に配置）
     */
@@ -125,11 +124,11 @@ function HomePageContent() {
       isLoggedIn ? "justify-start" : "justify-center"
     }`}>
       
-      {/* 🔓 【ログインしていない場合】ヘッダーのみを画面中央に表示 */}
+      {/* 【ログインしていない場合】ヘッダーのみを画面中央に表示 */}
       {!isLoggedIn ? (
         <Header />
       ) : (
-        /* 🔒 【ログインしている場合】ヘッダー ＋ 検索・結果エリア */
+        /* 【ログインしている場合】ヘッダー ＋ 検索・結果エリア */
         <>
           <Header />
 

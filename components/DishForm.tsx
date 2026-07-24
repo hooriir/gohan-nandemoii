@@ -1,4 +1,4 @@
-"use client"; // ✨ クライアント側で動かすための宣言
+"use client"; // クライアント側で動かすための宣言
 
 import { useState, ChangeEvent } from "react";
 import Button from "./Button";
@@ -44,7 +44,7 @@ export default function DishForm() {
               name="imageFile" 
               accept="image/*" 
               className="hidden" 
-              onChange={handleFileChange} // ✨ ファイル選択時に動く関数を指定
+              onChange={handleFileChange} // ファイル選択時に動く関数を指定
             />
           </label>
           

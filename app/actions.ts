@@ -44,7 +44,7 @@ export async function registerUser(formData: FormData) {
   const { name, email, password } = validatedFields.data;
 
   // 3. Supabase Auth でユーザー作成（暗号化や重複チェックはSupabase側が自動で行います）
-  const { data, error } = await supabase.auth.signUp({
+  const { error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -156,7 +156,7 @@ export async function createDish(formData: FormData) {
         .filter((t) => t.length > 0)
     : [];
 
-  // 5. ✨ Supabaseではなく、Prismaを使ってデータベースへ保存する形式に戻します
+  // 5. Supabaseではなく、Prismaを使ってデータベースへ保存する形式に戻します
   try {
     // TypeScriptのエラーを防ぐため、確実にメールアドレスが存在することを確認・固定します
     const userEmail = user.email;

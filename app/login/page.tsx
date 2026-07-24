@@ -1,18 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react"; 
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import Button from "@/components/Button";
 import { createClient } from "@/utils/supabase/client";
 
-export default function LoginPage() {
+
+function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const router = useRouter();
+  const searchParams = useSearchParams(); 
+  const isTimeout = searchParams.get("reason") === "timeout";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,41 +26,45 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      // ✨ ボタンを押した瞬間に、その時のブラウザ環境で確実にクライアントを生成する
       const supabase = createClient();
-
-      // 余計なスペースなどを排除して綺麗にする
       const cleanEmail = email.trim();
-      const cleanPassword = password.trim();
+      //  パスワードの trim() は除外（意図的な空白対策）
 
-      // Supabase Authのログイン処理を実行
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
-        password: cleanPassword,
+        password: password,
       });
 
       if (signInError) {
-        console.error("Supabaseサインイン内部エラー:", signInError);
-        setError(`ログイン失敗: ${signInError.message}`);
-        setIsSubmitting(false);
-      } else {
-        console.log("ログイン成功！セッションを取得します:", data);
-        
-        // 明示的にブラウザ側にセッションを覚えさせる
-        if (data.session) {
-          await supabase.auth.setSession(data.session);
+        // コンソールの赤文字エラーを避けるため console.warn または info に変更
+        console.warn("ログイン失敗:", signInError.message);
+
+        // メッセージを日本語で分かりやすく分岐
+        if (signInError.message === "Invalid login credentials") {
+          setError("メールアドレスまたはパスワードが正しくありません。");
+        } else if (signInError.message.includes("Email not confirmed")) {
+          setError("メールアドレスの確認が完了していません。受信トレイをご確認ください。");
+        } else {
+          setError("ログインに失敗しました。入力内容をご確認ください。");
         }
 
-        // トップページへ移動
-        router.push("/");
-        
-        // 移動後に確実にヘッダー側を動かすために1回だけリフレッシュ
-        setTimeout(() => {
-          router.refresh();
-        }, 300);
+        setIsSubmitting(false);
+        return;
       }
+
+      //  成功時の処理
+      console.log("ログイン成功！", data);
+      
+      if (data.session) {
+        await supabase.auth.setSession(data.session);
+      }
+
+      router.push("/");
+      setTimeout(() => {
+        router.refresh();
+      }, 300);
+
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : "未知のエラー";
       console.error("システム例外エラー:", err);
       setError("通信中に予期せぬエラーが発生しました");
       setIsSubmitting(false);
@@ -78,6 +86,12 @@ export default function LoginPage() {
         </h1>
         
         <h2 className="text-xl font-bold text-slate-700 mb-6">ログイン</h2>
+
+        {isTimeout && (
+          <div className="bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold p-3 rounded-xl mb-4 text-center">
+            長時間操作がなかったため、安全のため自動ログアウトしました。
+          </div>
+        )}
 
         {error && (
           <p className="bg-red-50 text-red-600 border border-red-200 text-sm font-medium py-2 px-3 rounded-xl mb-4 text-left whitespace-pre-wrap">
@@ -126,5 +140,13 @@ export default function LoginPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="bg-brand-bg min-h-screen" />}>
+      <LoginForm />
+    </Suspense>
   );
 }

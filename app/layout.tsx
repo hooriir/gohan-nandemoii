@@ -1,4 +1,5 @@
 import Providers from "./providers";
+import AutoLogoutProvider from "@/components/AutoLogoutProvider";
 import "./globals.css";
 
 export default function RootLayout({
@@ -7,9 +8,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ja">
+    <html lang="ja" suppressHydrationWarning>
       <body>
+        <AutoLogoutProvider>
         <Providers>{children}</Providers>
+        </AutoLogoutProvider>
       </body>
     </html>
   );
