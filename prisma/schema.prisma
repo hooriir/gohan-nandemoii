@@ -8,6 +8,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // 1. ユーザーテーブル
@@ -16,7 +17,6 @@ model User {
   email         String   @unique
   name          String
   password      String
-  favoriteFoods String?  // 好きな料理のメモ等
 
   // リレーション（関係性）の定義
   dishes       Dish[]        // ユーザーが登録したごはん一覧
