@@ -54,7 +54,7 @@ export default async function EditMenuPage({ params }: EditPageProps) {
       const fileName = `${crypto.randomUUID()}-${Date.now()}.${fileExt}`;
       
       // Supabaseの dish-images バケットにアップロード
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from("dish-images")
         .upload(fileName, imageFile);
 
