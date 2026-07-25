@@ -128,6 +128,15 @@ function LoginForm() {
 
           <Button type="submit" text={isSubmitting ? "ログイン中..." : "ログイン"} variant="blue" />
 
+          {/* パスワードラベルの右側に再設定リンク */}
+          <div className="text-center">
+            <Link
+              href="/forgot-password"
+              className="text-xs text-slate-400 hover:text-brand-blue hover:underline transition-all">
+              パスワードをお忘れですか？
+            </Link>
+          </div>
+
           <div className="pt-4 text-center border-t border-slate-100 mt-4">
             <span className="text-xs text-slate-400">アカウントをお持ちでないですか？</span>
             <Link 
