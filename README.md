@@ -8,8 +8,8 @@
 https://gohan-nandemoii.vercel.app/
 
 # デモアカウント
-テスト用アカウントは以下です。
-メールアドレス：test@example.com
+テスト用アカウントは以下です。  
+メールアドレス：test@example.com  
 パスワード：password123
 
 ## サービス概要
