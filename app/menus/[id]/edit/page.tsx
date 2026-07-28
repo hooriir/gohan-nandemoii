@@ -9,31 +9,23 @@ interface EditPageProps {
 }
 
 export default async function EditMenuPage({ params }: EditPageProps) {
-  // 1. ログインチェック
   const supabase = await createClient();
   const { data: { user: supabaseUser } } = await supabase.auth.getUser();
   if (!supabaseUser || !supabaseUser.email) {
     redirect("/login");
   }
-
-  // 2. URLの[id]部分を取得（Promiseを解決）
   const { id } = await params;
-
-  // 3. 編集対象の料理データをデータベースから取得
   const dish = await prisma.dish.findUnique({
     where: { id },
     include: { tags: true },
   });
 
-  // 料理が存在しない場合は404
   if (!dish) {
     notFound();
   }
 
-  // タグを「さっぱり 日本食」のようなスペース区切りの文字列に戻す
   const tagsString = dish?.tags.map((t) => t.name).join(" ") ?? "";
 
-  // 保存処理を行う関数（Server Action）
   async function updateDish(formData: FormData) {
     "use server";
     
@@ -45,11 +37,8 @@ export default async function EditMenuPage({ params }: EditPageProps) {
 
     let imageUrl = dish?.imageUrl ?? null;
 
-    // 画像が新しく選択されていた場合のアップロード処理
     if (imageFile && imageFile.size > 0) {
       const supabase = await createClient();
-      
-      // ユニークなファイル名を作成（日本語ファイル名の競合を避けるため）
       const fileExt = imageFile.name.split('.').pop();
       const fileName = `${crypto.randomUUID()}-${Date.now()}.${fileExt}`;
       
@@ -63,12 +52,12 @@ export default async function EditMenuPage({ params }: EditPageProps) {
         return;
       }
 
-      // アップロードした画像の公開URLを取得
+
       const { data: { publicUrl } } = supabase.storage
         .from("dish-images")
         .getPublicUrl(fileName);
 
-      imageUrl = publicUrl; // 新しい画像URLで上書き
+      imageUrl = publicUrl;
     }
 
     // データベースを更新
@@ -76,8 +65,7 @@ export default async function EditMenuPage({ params }: EditPageProps) {
       where: { id },
       data: {
         name,
-        imageUrl, // ← 追加: 画像URLを更新
-        // タグの紐付けを一度クリアして再登録する処理
+        imageUrl,
         tags: {
           set: [], // 一度クリア
           connectOrCreate: tagsInput
@@ -91,7 +79,6 @@ export default async function EditMenuPage({ params }: EditPageProps) {
       },
     });
 
-    // 更新完了したら一覧ページへ戻す
     redirect("/menus");
   }
 
@@ -103,8 +90,7 @@ export default async function EditMenuPage({ params }: EditPageProps) {
         </h2>
 
         <form action={updateDish} className="space-y-4 text-left">
-          
-          {/* 画像入力欄を追加 */}
+
           <div>
             <label className="block text-xs font-bold text-slate-500 mb-1">
               ごはんの写真（変更する場合のみ選択）
@@ -128,7 +114,7 @@ export default async function EditMenuPage({ params }: EditPageProps) {
                 type="text"
                 name="name"
                 required
-                defaultValue={dish?.name} // ← dish?.name に変更
+                defaultValue={dish?.name} 
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 outline-none focus:border-brand-blue focus:bg-white transition-all"
             />
           </div>

@@ -27,7 +27,6 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // 💡 ログイン状態の確認
   const { data: { user } } = await supabase.auth.getUser()
 
   // 未ログインの状態でマイページ（/mypage）にアクセスしたらログイン画面に飛ばす

@@ -18,7 +18,6 @@ export async function createClient() {
               cookieStore.set(name, value, options)
             )
           } catch {
-            // ミドルウェア等からの呼び出し時にエラーが出るのを防ぐため
           }
         },
       },

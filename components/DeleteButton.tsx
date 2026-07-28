@@ -1,5 +1,4 @@
-// components/DeleteButton.tsx
-'use client'; // ★ ブラウザ側で動かす指定
+'use client';
 
 import { deleteDish } from "@/app/actions";
 
