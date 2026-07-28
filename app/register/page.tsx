@@ -1,6 +1,8 @@
 import Image from "next/image";
 import { registerUser } from "../actions";
 import Button from "@/components/Button";
+import Link from "next/link";
+import GoogleAuthButton from "@/components/GoogleAuthButton";
 
 export default function RegisterPage() {
   return (
@@ -8,12 +10,14 @@ export default function RegisterPage() {
       <div className="bg-white p-10 rounded-2xl shadow-xl w-full max-w-[400px] text-center">
         
         <h1 className="flex justify-center mb-2">
-          <Image
-            src="/images/gohan_bl.svg"
-            alt="ごはん？なんでもいい～"
-            width={160}
-            height={72}          
-          />
+          <Link href="/">
+            <Image
+              src="/images/gohan_bl.svg"
+              alt="ごはん？なんでもいい～"
+              width={160}
+              height={72}          
+            />
+          </Link>
         </h1>
         
         <h2 className="text-xl font-bold text-slate-700 mb-8">新規登録</h2>
@@ -55,7 +59,18 @@ export default function RegisterPage() {
           </div>
 
           <Button type="submit" text="登録する" variant="red" />
-          
+
+
+          <div className="pt-4 text-center border-t border-slate-100 mt-4">
+            <span className="text-xs text-slate-400">アカウントをお持ちですか？</span>
+            <Link href="/register">
+              <Button
+                text="ログインはこちら"
+                variant="blue"
+              />
+            </Link>
+            <GoogleAuthButton label="Googleでログイン" />
+          </div>
         </form>
       </div>
     </div>
