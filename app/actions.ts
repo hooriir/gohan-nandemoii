@@ -129,25 +129,27 @@ export async function createDish(formData: FormData) {
     : [];
 
   try {
-    const userEmail = user.email;
-    if (!userEmail) {
-      throw new Error("ユーザーのメールアドレスが取得できませんでした。");
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !user.email) {
+      throw new Error("認証エラー: ログインしてください");
     }
+
+    const dbUser = await prisma.user.upsert({
+      where: { email: user.email },
+      update: {},
+      create: {
+        id: user.id,
+        email: user.email,
+        name: user.user_metadata?.name || user.email.split("@")[0] || "ユーザー",
+        password: "OAUTH_USER",
+      },
+    });
 
     await prisma.dish.create({
       data: {
         name,
         imageUrl,
-        user: {
-          connectOrCreate: {
-            where: { email: userEmail },
-            create: { 
-              email: userEmail,
-              name: user.user_metadata?.name || userEmail.split("@")[0] || "ユーザー",
-              password: "SUPABASE_AUTHENTICATED_USER" // ✨ Prismaの必須エラーを回避するためのダミー値（ログインには使われません）
-            }
-          }
-        },
+        userId: dbUser.id,
         tags: {
           connectOrCreate: tagNames.map((tagName) => ({
             where: { name: tagName },
@@ -170,7 +172,7 @@ export async function deleteDish(formData: FormData) {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !user.email) {
+  if (!user) {
     throw new Error("認証が必要です。ログインしてください。");
   }
 
@@ -181,14 +183,13 @@ export async function deleteDish(formData: FormData) {
 
   const dish = await prisma.dish.findUnique({
     where: { id: dishId },
-    include: { user: true }, 
   });
 
   if (!dish) {
     throw new Error("料理が見つかりません");
   }
 
-  if (dish.user.email !== user.email) {
+  if (dish.userId !== user.id) {
     throw new Error("削除する権限がありません");
   }
 
@@ -216,10 +217,4 @@ export async function deleteDish(formData: FormData) {
   }
 
   redirect("/menus");
-}
-
-export async function signOutUser() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  redirect("/login");
 }

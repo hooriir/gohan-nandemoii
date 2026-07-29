@@ -28,8 +28,6 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/login?error=auth", origin));
   }
 
-  // このアプリの Prisma User は email で紐づく（id は cuid）
-  // password は必須カラムなので、Google ユーザーにはダミーを入れる
   const displayName =
     user.user_metadata?.full_name ||
     user.user_metadata?.name ||
@@ -39,10 +37,10 @@ export async function GET(request: Request) {
   await prisma.user.upsert({
     where: { email: user.email },
     update: {
-      // 既存ユーザーは上書きしすぎない（名前だけ必要なら更新）
       name: displayName,
     },
     create: {
+      id: user.id,
       email: user.email,
       name: displayName,
       password: "GOOGLE_OAUTH_USER",

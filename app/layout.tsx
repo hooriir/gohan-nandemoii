@@ -1,5 +1,3 @@
-import Providers from "./providers";
-import AutoLogoutProvider from "@/components/AutoLogoutProvider";
 import "./globals.css";
 
 export default function RootLayout({
@@ -9,11 +7,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ja" suppressHydrationWarning>
+      <html lang="ja">
       <body>
-        <AutoLogoutProvider>
-        <Providers>{children}</Providers>
-        </AutoLogoutProvider>
+        {children}
       </body>
+    </html>
     </html>
   );
 }

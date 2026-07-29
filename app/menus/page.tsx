@@ -39,14 +39,16 @@ export default async function MenusPage() {
 
         <div className="flex-1 bg-white rounded-3xl shadow-xl p-6 sm:p-10 border border-slate-100 w-full">
           <h2 className="text-[#54C7F3] text-center text-2xl font-black mb-8 tracking-wider">
-          ごはん登録・一覧
-        </h2>
+            ごはん登録・一覧
+          </h2>
 
           <div className="text-center mb-10 pb-10 border-b border-slate-100">
             <h2 className="text-base font-black text-slate-700 flex flex-col items-center gap-1 mb-1">
               ごはん登録
             </h2>
-            <p className="text-[11px] font-bold text-slate-400 mb-6">いつも食べてるあのごはんを登録しとく</p>
+            <p className="text-[11px] font-bold text-slate-400 mb-6">
+              いつも食べてるあのごはんを登録しとく
+            </p>
 
             <DishForm />
           </div>
@@ -59,13 +61,16 @@ export default async function MenusPage() {
             </div>
 
             {dishes.length === 0 ? (
-              <p className="text-center text-sm text-slate-400 py-8">登録された料理はまだありません。</p>
+              <p className="text-center text-sm text-slate-400 py-8">
+                登録された料理はまだありません。
+              </p>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                 {dishes.map((dish) => (
                   <div key={dish.id} className="flex flex-col items-center text-center">
                     
-                    <div className="w-full aspect-square bg-slate-50 border border-brand-blue/20 rounded-2xl overflow-hidden relative shadow-inner mb-3">
+                    {/* 画像領域 */}
+                    <div className="w-full aspect-square bg-[#f4f9fd] border-2 border-[#e3f2fd] rounded-3xl overflow-hidden relative mb-3 flex items-center justify-center">
                       {dish.imageUrl ? (
                         <Image
                           src={dish.imageUrl}
@@ -75,21 +80,33 @@ export default async function MenusPage() {
                           className="object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-slate-300 bg-slate-50">
-                          <span className="text-xs font-bold">No Image</span>
-                        </div>
+                        <span className="text-[#c2e4fa] font-bold text-xl select-none">
+                          No Image
+                        </span>
                       )}
                     </div>
 
-                    <h3 className="font-bold text-slate-800 text-sm mb-1">{dish.name}</h3>
-                    <p className="text-[10px] text-slate-400 font-bold mb-3 min-h-[15px]">
-                      {dish.tags.map(t => `#${t.name}`).join(" ")}
+                    {/* 料理名 */}
+                    <h3 className="font-bold text-[#333333] text-lg mb-1">
+                      {dish.name}
+                    </h3>
+
+                    {/* ハッシュタグ */}
+                    <p className="text-xs text-slate-400 font-bold mb-4 min-h-[18px] flex flex-wrap justify-center gap-1">
+                      {dish.tags.length > 0 ? (
+                        dish.tags.map((t) => (
+                          <span key={t.id}>#{t.name}</span>
+                        ))
+                      ) : (
+                        <span className="text-slate-300">#タグなし</span>
+                      )}
                     </p>
 
-                    <div className="flex gap-2 w-full max-w-[140px]">
+                    {/* ボタン群 */}
+                    <div className="flex gap-3 w-full max-w-[180px]">
                       <Link 
                         href={`/menus/${dish.id}/edit`} 
-                        className="flex-1 bg-sky-400 hover:bg-sky-500 text-white text-[10px] font-bold py-1 px-2 rounded shadow-sm transition-colors text-center block leading-loose"
+                        className="flex-1 bg-[#00b2fe] hover:bg-[#009de0] text-white text-xs font-bold py-2 rounded-xl transition-colors text-center block shadow-sm"
                       >
                         編集
                       </Link>

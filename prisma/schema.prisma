@@ -13,17 +13,15 @@ datasource db {
 
 // 1. ユーザーテーブル
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  name          String
-  password      String
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  password  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  // リレーション（関係性）の定義
-  dishes       Dish[]        // ユーザーが登録したごはん一覧
-  showLogs     DishShowLog[] // ユーザーの検索・表示履歴一覧
-
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  dishes   Dish[]
+  showLogs DishShowLog[]
 }
 
 // 2. dishesテーブル（ごはん）

@@ -1,4 +1,5 @@
 import { redirect, notFound } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 import Link from "next/link";
@@ -11,9 +12,11 @@ interface EditPageProps {
 export default async function EditMenuPage({ params }: EditPageProps) {
   const supabase = await createClient();
   const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+  
   if (!supabaseUser || !supabaseUser.email) {
     redirect("/login");
   }
+
   const { id } = await params;
   const dish = await prisma.dish.findUnique({
     where: { id },
@@ -31,18 +34,18 @@ export default async function EditMenuPage({ params }: EditPageProps) {
     
     const name = formData.get("name") as string;
     const tagsInput = formData.get("tagsInput") as string;
-    const imageFile = formData.get("image") as File; // ← 追加: フォームから画像ファイルを取得
+    const imageFile = formData.get("image") as File;
 
     if (!name) return;
 
     let imageUrl = dish?.imageUrl ?? null;
 
+    // 画像が添付されていて、ファイルサイズが0より大きい場合のみアップロード
     if (imageFile && imageFile.size > 0) {
       const supabase = await createClient();
       const fileExt = imageFile.name.split('.').pop();
       const fileName = `${crypto.randomUUID()}-${Date.now()}.${fileExt}`;
       
-      // Supabaseの dish-images バケットにアップロード
       const { error } = await supabase.storage
         .from("dish-images")
         .upload(fileName, imageFile);
@@ -51,7 +54,6 @@ export default async function EditMenuPage({ params }: EditPageProps) {
         console.error("画像のアップロードに失敗しました:", error);
         return;
       }
-
 
       const { data: { publicUrl } } = supabase.storage
         .from("dish-images")
@@ -67,18 +69,25 @@ export default async function EditMenuPage({ params }: EditPageProps) {
         name,
         imageUrl,
         tags: {
-          set: [], // 一度クリア
+          set: [], // タグを一度リセット
           connectOrCreate: tagsInput
-            .split(/\s+/)
-            .filter(Boolean)
-            .map((tagName) => ({
-              where: { name: tagName },
-              create: { name: tagName },
-            })),
+            ? tagsInput
+                .split(/\s+/)
+                .filter(Boolean)
+                .map((tagName) => ({
+                  where: { name: tagName },
+                  create: { name: tagName },
+                }))
+            : [],
         },
       },
     });
 
+    // ⭕ 変更を一覧ページに即時反映させるためキャッシュを破棄
+    revalidatePath("/menus");
+    revalidatePath(`/menus/${id}/edit`);
+
+    // ⭕ 処理の最後にリダイレクト
     redirect("/menus");
   }
 
@@ -96,26 +105,26 @@ export default async function EditMenuPage({ params }: EditPageProps) {
               ごはんの写真（変更する場合のみ選択）
             </label>
             {dish?.imageUrl && (
-                <div className="mb-2 text-xs text-slate-400">
-                    現在の画像が登録されています。変更したい場合は下のボタンから新しい画像を選んでください。
-                </div>
-                )}
-                <input
-                type="file"
-                name="image"
-                accept="image/*"
-                className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-600 hover:file:bg-sky-100 cursor-pointer"
-                />
+              <div className="mb-2 text-xs text-slate-400">
+                現在の画像が登録されています。変更したい場合は下のボタンから新しい画像を選んでください。
+              </div>
+            )}
+            <input
+              type="file"
+              name="image"
+              accept="image/*"
+              className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-600 hover:file:bg-sky-100 cursor-pointer"
+            />
           </div>
 
           <div>
             <label className="block text-xs font-bold text-slate-500 mb-1">ごはん名</label>
             <input
-                type="text"
-                name="name"
-                required
-                defaultValue={dish?.name} 
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 outline-none focus:border-brand-blue focus:bg-white transition-all"
+              type="text"
+              name="name"
+              required
+              defaultValue={dish?.name} 
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 outline-none focus:border-brand-blue focus:bg-white transition-all"
             />
           </div>
 

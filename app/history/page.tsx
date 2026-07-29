@@ -3,16 +3,14 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 
 export default async function HistoryPage() {
-  // 1. Supabaseからログインユーザーを取得
   const { createClient } = await import("@/utils/supabase/server");
   const supabase = await createClient();
   const { data: { user: supabaseUser } } = await supabase.auth.getUser();
 
   if (!supabaseUser || !supabaseUser.email) {
-    redirect("/login"); // 未ログインならログインへ
+    redirect("/login");
   }
 
-  // 2. PrismaのUser情報を取得
   const dbUser = await prisma.user.findUnique({
     where: { email: supabaseUser.email },
   });
@@ -21,14 +19,13 @@ export default async function HistoryPage() {
     return <div className="p-8 text-center">ユーザー情報が見つかりません。</div>;
   }
 
-  // 3. 履歴（DishShowLog）を新しい順に取得
   const logs = await prisma.dishShowLog.findMany({
     where: { userId: dbUser.id },
     include: {
-      dish: true, // 紐づくごはん情報も一緒に持ってくる
+      dish: true,
     },
     orderBy: {
-      createdAt: "desc", // 最新の提案が一番上
+      createdAt: "desc",
     },
   });
 
@@ -46,20 +43,22 @@ export default async function HistoryPage() {
                 <Image
                   src={log.dish.imageUrl}
                   alt={log.dish.name}
+                  width={64}
+                  height={64}
                   className="w-16 h-16 object-cover rounded-lg"
                 />
               ) : (
-                <div className="w-16 h-16 bg-gray-100 flex items-center justify-center rounded-lg text-xl">
+                <div className="w-16 h-16 bg-gray-100 flex items-center justify-center rounded-lg text-xl flex-shrink-0">
                   🍽️
                 </div>
               )}
-              <div className="flex-1">
-                <h3 className="font-semibold text-lg">{log.dish.name}</h3>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-lg truncate">{log.dish.name}</h3>
                 <p className="text-sm text-gray-500">
                   入力キー: <span className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">{log.keyword}</span>
                 </p>
               </div>
-              <div className="text-right text-xs text-gray-400">
+              <div className="text-right text-xs text-gray-400 whitespace-nowrap">
                 {new Date(log.createdAt).toLocaleDateString("ja-JP", {
                   month: "short",
                   day: "numeric",

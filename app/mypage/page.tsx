@@ -16,12 +16,11 @@ export default function MyPageTop() {
 
   useEffect(() => {
     async function checkUser() {
-      // ユーザーセッションを取得
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
+      // ⭕ セキュリティ推奨の getUser() に変更
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (user && !error) {
+        setUser(user);
       } else {
-        // セッションがない（未ログイン）ならログイン画面へリダイレクト
         router.push('/login');
       }
       setLoading(false);
@@ -29,29 +28,28 @@ export default function MyPageTop() {
     checkUser();
   }, [supabase, router]);
 
-
   // 読み込み中の表示
   if (loading) {
     return <div className="text-center p-10 text-white bg-brand-bg min-h-screen">読み込み中...</div>;
   }
 
-  // セッションがない場合は何も表示しない（リダイレクトを待つ）
+  // 未ログインの場合は何も表示しない（リダイレクト処理を待つ）
   if (!user) return null;
 
   return (
-    // 背景色（ログイン画面と統一：bg-brand-bg、または画像に合わせるなら bg-[#54C7F3]）
     <div className="bg-[#54C7F3] min-h-screen flex flex-col font-sans">
       
       {/* メインコンテンツエリア */}
       <main className="flex-1 flex flex-col items-center justify-center px-4 py-8">
         
         <Header />
+        
         {/* 中部：セクション見出し */}
         <h2 className="text-white text-2xl font-black mb-8 tracking-wider">
           マイページ
         </h2>
 
-        {/* 下部：3つのメニューカード */}
+        {/* 下部：2つのメニューカード */}
         <div className="grid grid-cols-2 sm:grid-cols-2 md:flex-col gap-2 max-w-md w-full px-4 justify-items-center justify-center">
         
           {/* 1. プロフィールカード */}

@@ -15,7 +15,8 @@ export default function UpdatePasswordPage() {
 
   const router = useRouter();
 
-  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
+  // ⭕ 型を React.FormEvent<HTMLFormElement> に修正
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isSubmitting) return;
 
@@ -45,7 +46,10 @@ export default function UpdatePasswordPage() {
 
       if (updateError) {
         console.warn("パスワード更新失敗:", updateError.message);
-        setError("パスワードの更新に失敗しました。もう一度お試しください。");
+        // セッションが切れている・リンクが無効な場合などの配慮
+        setError(
+          "パスワードの更新に失敗しました。リンクの有効期限が切れている可能性があります。もう一度再設定メールを送信してください。"
+        );
         setIsSubmitting(false);
         return;
       }

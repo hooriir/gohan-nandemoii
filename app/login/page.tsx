@@ -37,10 +37,8 @@ function LoginForm() {
       });
 
       if (signInError) {
-        // コンソールの赤文字エラーを避けるため console.warn または info に変更
         console.warn("ログイン失敗:", signInError.message);
 
-        // メッセージを日本語で分かりやすく分岐
         if (signInError.message === "Invalid login credentials") {
           setError("メールアドレスまたはパスワードが正しくありません。");
         } else if (signInError.message.includes("Email not confirmed")) {
@@ -53,7 +51,6 @@ function LoginForm() {
         return;
       }
 
-      //  成功時の処理
       console.log("ログイン成功！", data);
       
       if (data.session) {

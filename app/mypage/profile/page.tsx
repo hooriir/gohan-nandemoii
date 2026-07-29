@@ -9,7 +9,6 @@ import { updateProfile } from '../../actions';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const supabase = createClient(); // ✨ インスタンス化
 
   // 表示モード (false) と 編集モード (true) を管理
   const [isEditing, setIsEditing] = useState(false);
@@ -18,10 +17,12 @@ export default function ProfilePage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(true); // ✨ NextAuthのloadingの代わり
+  const [isLoading, setIsLoading] = useState(true);
 
-  // ✨ 初回にSupabaseからユーザー情報を安全に取得する
+  // 初回にSupabaseからユーザー情報を取得する
   useEffect(() => {
+    const supabase = createClient();
+
     async function loadUser() {
       const { data: { user }, error } = await supabase.auth.getUser();
       
@@ -37,7 +38,7 @@ export default function ProfilePage() {
     }
 
     loadUser();
-  }, [router, supabase]);
+  }, [router]);
 
   const handleStartEdit = () => {
     setPassword(''); // 編集開始時はパスワード欄を空にする
@@ -49,7 +50,7 @@ export default function ProfilePage() {
     e.preventDefault();
     
     try {
-      // ✨ Server Action に FormData を渡して安全にDB/Authを更新
+      // Server Action に FormData を渡して安全にDB/Authを更新
       const formData = new FormData();
       formData.append('name', name);
       formData.append('password', password);
@@ -59,9 +60,8 @@ export default function ProfilePage() {
       alert('プロフィールを更新しました！');
       setIsEditing(false); // 表示モードに戻す
       router.refresh(); // ヘッダー等の表示を最新に同期する
-    } catch (error) { // ✨ (: any) を削除
+    } catch (error) {
       console.error(error);
-      // ✨ error がオブジェクトであり、かつ message プロパティを持っているかチェックする
       if (error instanceof Error) {
         alert(error.message);
       } else {
@@ -80,7 +80,6 @@ export default function ProfilePage() {
       <main className="flex-1 flex flex-col items-center py-8 px-4">
         {/* 上部：タイトルエリア */}
         <Header />
-        
 
         {/* レイアウトエリア（左：サイドメニュー、右：メインカード） */}
         <div className="flex flex-col md:flex-row gap-8 max-w-4xl w-full px-4 items-start justify-center">

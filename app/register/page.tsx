@@ -22,7 +22,6 @@ export default function RegisterPage() {
         
         <h2 className="text-xl font-bold text-slate-700 mb-8">新規登録</h2>
 
-        {/* registerUser が何も返さなくなったため、直接渡すだけで型エラーが消えます */}
         <form action={registerUser} className="space-y-5 text-left">
           
           <div>
@@ -60,16 +59,20 @@ export default function RegisterPage() {
 
           <Button type="submit" text="登録する" variant="red" />
 
+          <div className="pt-4 text-center border-t border-slate-100 mt-4 space-y-3">
+            <div>
+              <span className="text-xs text-slate-400 block mb-2">すでにアカウントをお持ちですか？</span>
+              {/* ⭕ リンク先を /login に修正 */}
+              <Link href="/login" className="block w-full">
+                <Button
+                  type="button"
+                  text="ログインはこちら"
+                  variant="blue"
+                />
+              </Link>
+            </div>
 
-          <div className="pt-4 text-center border-t border-slate-100 mt-4">
-            <span className="text-xs text-slate-400">アカウントをお持ちですか？</span>
-            <Link href="/register">
-              <Button
-                text="ログインはこちら"
-                variant="blue"
-              />
-            </Link>
-            <GoogleAuthButton label="Googleでログイン" />
+            <GoogleAuthButton label="Googleで登録・ログイン" />
           </div>
         </form>
       </div>
