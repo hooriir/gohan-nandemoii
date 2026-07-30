@@ -84,7 +84,9 @@ const dishSchema = z.object({
 export async function createDish(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("認証が必要です。ログインしてください。");
+  if (!user || !user.email) {
+    throw new Error("認証が必要です。ログインしてください。");
+  }
 
   const rawData = Object.fromEntries(formData.entries());
   const validatedFields = dishSchema.safeParse(rawData);
@@ -100,13 +102,12 @@ export async function createDish(formData: FormData) {
   if (imageFile && imageFile.size > 0 && imageFile.name !== "undefined") {
     const fileExt = imageFile.name.split(".").pop();
     const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-    const arrayBuffer = await imageFile.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+
     const { error } = await supabase.storage
       .from("dish-images")
-      .upload(fileName, buffer, {
+      .upload(fileName, imageFile, {
         contentType: imageFile.type,
-        upsert: true
+        upsert: true,
       });
 
     if (error) {
@@ -129,32 +130,39 @@ export async function createDish(formData: FormData) {
     : [];
 
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !user.email) {
-      throw new Error("認証エラー: ログインしてください");
-    }
+    let tagConnectIds: { id: string }[] = [];
 
-    const dbUser = await prisma.user.upsert({
-      where: { email: user.email },
-      update: {},
-      create: {
-        id: user.id,
-        email: user.email,
-        name: user.user_metadata?.name || user.email.split("@")[0] || "ユーザー",
-        password: "OAUTH_USER",
-      },
-    });
+    if (tagNames.length > 0) {
+      const existingTags = await prisma.tag.findMany({
+        where: { name: { in: tagNames } },
+        select: { id: true, name: true },
+      });
+
+      const existingNames = existingTags.map((t) => t.name);
+      const newNames = tagNames.filter((name) => !existingNames.includes(name));
+
+      if (newNames.length > 0) {
+        await prisma.tag.createMany({
+          data: newNames.map((name) => ({ name })),
+          skipDuplicates: true,
+        });
+      }
+
+      const allTags = await prisma.tag.findMany({
+        where: { name: { in: tagNames } },
+        select: { id: true },
+      });
+
+      tagConnectIds = allTags.map((t) => ({ id: t.id }));
+    }
 
     await prisma.dish.create({
       data: {
         name,
         imageUrl,
-        userId: dbUser.id,
+        userId: user.id,
         tags: {
-          connectOrCreate: tagNames.map((tagName) => ({
-            where: { name: tagName },
-            create: { name: tagName },
-          })),
+          connect: tagConnectIds,
         },
       },
     });

@@ -1,5 +1,4 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma"; 
+import { prisma } from "@/lib/prisma";
 import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({});
@@ -9,14 +8,11 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { userId, keyword } = body;
 
-    console.log("【デバッグ】受信した userId:", userId);
-    console.log("【デバッグ】受信した keyword:", keyword);
-
     if (!userId) {
-      return NextResponse.json(
-        { error: "ユーザーIDが必要です。" },
-        { status: 400 }
-      );
+      return new Response(JSON.stringify({ error: "ユーザーIDが必要です。" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const cleanKeyword = keyword?.trim() || "なんでもいい";
@@ -43,12 +39,11 @@ export async function POST(request: Request) {
     );
 
     if (availableDishes.length === 0 && userDishes.length > 0) {
-      console.log("【デバッグ】全メニューが一巡したため、履歴をリセットして再選定します。");
       availableDishes = userDishes;
     }
 
     // -------------------------------------------------------------
-    // パターンA: 登録されているメニューがある場合（AIがその中から選ぶ）
+    // パターンA: 登録されているメニューがある場合
     // -------------------------------------------------------------
     if (availableDishes.length > 0) {
       const shuffledDishes = [...availableDishes].sort(() => Math.random() - 0.5);
@@ -71,8 +66,8 @@ export async function POST(request: Request) {
 ${menuListText}`;
 
       try {
-        const response = await ai.models.generateContent({
-          model: "gemini-1.5-flash",
+        const responseStream = await ai.models.generateContentStream({
+          model: "models/gemini-1.5-flash", // 正しいモデル名表記
           contents: prompt,
           config: {
             temperature: 0.9,
@@ -89,32 +84,54 @@ ${menuListText}`;
           },
         });
 
-        const parsed = JSON.parse(response.text || "{}");
+        let fullText = "";
 
-        const matchedDish =
-          availableDishes.find((d) => d.id === parsed.selectedId) || shuffledDishes[0];
+        const stream = new ReadableStream({
+          async start(controller) {
+            const encoder = new TextEncoder();
+            try {
+              for await (const chunk of responseStream) {
+                if (chunk.text) {
+                  fullText += chunk.text;
+                  controller.enqueue(encoder.encode(chunk.text));
+                }
+              }
 
-        await prisma.dishShowLog.create({
-          data: {
-            userId: userId,
-            dishId: matchedDish.id,
-            keyword: cleanKeyword,
+              try {
+                const parsed = JSON.parse(fullText || "{}");
+                const matchedDish =
+                  availableDishes.find((d) => d.id === parsed.selectedId) || shuffledDishes[0];
+
+                await prisma.dishShowLog.create({
+                  data: {
+                    userId: userId,
+                    dishId: matchedDish.id,
+                    keyword: cleanKeyword,
+                  },
+                });
+              } catch (dbError) {
+                console.error("DB保存またはパース失敗:", dbError);
+              }
+
+              controller.close();
+            } catch (err) {
+              controller.error(err);
+            }
           },
         });
 
-        return NextResponse.json({
-          dish: {
-            id: matchedDish.id,
-            name: matchedDish.name,
-            imageUrl: matchedDish.imageUrl || null,
+        return new Response(stream, {
+          headers: {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            Connection: "keep-alive",
           },
-          reason: parsed.reason || `本日のおすすめメニューです！`,
-          isAiGeneration: false,
         });
 
       } catch (aiError) {
-        console.warn("Gemini Error (登録メニュー選定時):", aiError);
+        console.warn("Gemini APIエラー（クォータ制限等）のためフォールバック選定を行います:", aiError);
 
+        // AI呼び出しに失敗した場合は、フォールバックとしてランダム選定
         const fallbackDish = shuffledDishes[Math.floor(Math.random() * shuffledDishes.length)];
 
         await prisma.dishShowLog.create({
@@ -125,28 +142,31 @@ ${menuListText}`;
           },
         });
 
-        return NextResponse.json({
-          dish: {
-            id: fallbackDish.id,
-            name: fallbackDish.name,
-            imageUrl: fallbackDish.imageUrl || null,
-          },
-          reason: `本日のおすすめメニューです！`,
-          isAiGeneration: false,
-        });
+        return new Response(
+          JSON.stringify({
+            dish: {
+              id: fallbackDish.id,
+              name: fallbackDish.name,
+              imageUrl: fallbackDish.imageUrl || null,
+            },
+            reason: `本日のおすすめメニューです！`,
+            isAiGeneration: false,
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
       }
     }
 
     // -------------------------------------------------------------
-    // パターンB: 登録メニューが1件もない場合（AIが自由に新規作成する）
+    // パターンB: 登録メニューが1件もない場合
     // -------------------------------------------------------------
     const freePrompt = `ユーザーの希望キーワードは「${cleanKeyword}」です。今日のごはんのおすすめメニューを1つ提案してください。毎回違うジャンルの料理を提案してください。`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+    const responseStream = await ai.models.generateContentStream({
+      model: "models/gemini-1.5-flash", // 正しいモデル名表記
       contents: freePrompt,
       config: {
-        temperature: 1.0, // 多様性を最大化
+        temperature: 1.0,
         responseMimeType: "application/json",
         responseSchema: {
           type: "OBJECT",
@@ -162,23 +182,35 @@ ${menuListText}`;
       },
     });
 
-    const parsed = JSON.parse(response.text || "{}");
-
-    return NextResponse.json({
-      dish: {
-        id: `ai-${Date.now()}`,
-        name: parsed.name || "特製ハンバーグ",
-        imageUrl: null,
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder();
+        try {
+          for await (const chunk of responseStream) {
+            if (chunk.text) {
+              controller.enqueue(encoder.encode(chunk.text));
+            }
+          }
+          controller.close();
+        } catch (err) {
+          controller.error(err);
+        }
       },
-      reason: parsed.reason || "今日にぴったりの特別メニューです！",
-      isAiGeneration: true,
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
     });
 
   } catch (error) {
     console.error("Recommend API Error:", error);
-    return NextResponse.json(
-      { error: "メニューの決定に失敗しました。" },
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({ error: "メニューの決定に失敗しました。" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }
