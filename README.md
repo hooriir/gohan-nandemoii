@@ -33,7 +33,7 @@ https://gohan-nandemoii.vercel.app/
 <img width="400" height="242" alt="操作方法" src="https://github.com/user-attachments/assets/a3347236-285e-48fe-960c-166c048e64ad" />  
 
 1. デモアカウントでログインするとメニューを検索する画面に切り替わります。
-2. 「検索」画面でキーワード検索や絞り込みを試していただくことで、検索結果の挙動をご確認いただけます。
+2. キーワードを入力して赤いボタンをクリックすると検索結果の挙動をご確認いただけます。
 
 ## 使用技術（Tech Stack）
 - **フレームワーク / ライブラリ:** Next.js (App Router), React, TypeScript
