@@ -31,6 +31,7 @@ https://gohan-nandemoii.vercel.app/
 
 ## 画面イメージ / 操作方法
 <img width="400" height="242" alt="操作方法" src="https://github.com/user-attachments/assets/a3347236-285e-48fe-960c-166c048e64ad" />  
+
 1. デモアカウントでログインします。
 2. あらかじめサンプルメニュー（和食・洋食・中華など）と利用履歴が登録されています。
 3. 「検索」画面でキーワード検索や絞り込みを試していただくことで、検索結果の挙動をご確認いただけます。
