@@ -35,8 +35,9 @@ export async function GET(request: Request) {
     "ユーザー";
 
   await prisma.user.upsert({
-    where: { email: user.email },
+    where: { id: user.id },
     update: {
+      email: user.email,
       name: displayName,
     },
     create: {

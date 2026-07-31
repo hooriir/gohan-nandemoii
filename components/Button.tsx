@@ -19,10 +19,11 @@ export default function Button({
     ? "opacity-50 cursor-not-allowed" 
     : "cursor-pointer active:scale-[0.98]";
 
-  // 色ごとのスタイル
-  const variantStyles = variant === 'red' 
-    ? "bg-brand-red hover:bg-red-600 shadow-brand-red/20" 
-    : "bg-brand-blue hover:bg-sky-500 shadow-brand-blue/20";
+  const variantStyles = {
+    red: "bg-brand-red hover:bg-red-600 shadow-brand-red/20",
+    blue: "bg-brand-blue hover:bg-blue-600 shadow-brand-blue/20",
+    sky: "bg-sky-400 hover:bg-sky-500 shadow-sky-400/20",
+  }[variant];
 
   return (
     <button 

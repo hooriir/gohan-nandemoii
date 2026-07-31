@@ -33,7 +33,8 @@ export async function registerUser(formData: FormData) {
   }
 
   const { name, email, password } = validatedFields.data;
-  const { error } = await supabase.auth.signUp({
+  
+  const { data: signUpData, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -47,8 +48,30 @@ export async function registerUser(formData: FormData) {
     throw new Error(`新規登録に失敗しました: ${error.message}`);
   }
 
+  if (signUpData.user) {
+    await prisma.user.upsert({
+      where: { id: signUpData.user.id },
+      update: {
+        email,
+        name,
+      },
+      create: {
+        id: signUpData.user.id,
+        email,
+        name,
+        password: "SUPABASE_AUTH_USER",
+      },
+    });
+  }
+
   redirect("/login");
 }
+
+const profileSchema = z.object({
+  name: z.string().min(1, { message: "お名前を入力してください" }).max(20),
+  email: z.string().email({ message: "正しいメールアドレスの形式で入力してください" }),
+  password: z.string().optional(),
+});
 
 export async function updateProfile(formData: FormData) {
   const supabase = await createClient();
@@ -56,21 +79,54 @@ export async function updateProfile(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("ログインしていません");
 
-  const name = formData.get("name") as string;
-  const password = formData.get("password") as string;
+  const rawData = Object.fromEntries(formData.entries());
+  const validatedFields = profileSchema.safeParse(rawData);
 
-  if (name) {
-    const { error: nameError } = await supabase.auth.updateUser({
-      data: { name: name }
-    });
-    if (nameError) throw new Error(`名前の変更に失敗しました: ${nameError.message}`);
+  if (!validatedFields.success) {
+    const errorMessages = validatedFields.error.issues
+      .map((issue) => issue.message)
+      .join(", ");
+    throw new Error(`入力内容に不備があります: ${errorMessages}`);
+  }
+
+  const { name, email, password } = validatedFields.data;
+
+  const updateAttributes: {
+    email?: string;
+    password?: string;
+    data: { name: string };
+  } = {
+    data: { name },
+  };
+
+  if (email && email !== user.email) {
+    updateAttributes.email = email;
   }
 
   if (password && password.trim() !== "") {
-    const { error: passError } = await supabase.auth.updateUser({
-      password: password
+    if (password.length < 6) {
+      throw new Error("新しいパスワードは6文字以上で入力してください");
+    }
+    updateAttributes.password = password;
+  }
+
+  // 1. Supabase Auth 側の更新
+  const { error: authError } = await supabase.auth.updateUser(updateAttributes);
+  if (authError) {
+    throw new Error(`アカウント情報の更新に失敗しました: ${authError.message}`);
+  }
+
+  // 2. Prisma (DB) 側の更新
+  try {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        name,
+        email: email || user.email,
+      },
     });
-    if (passError) throw new Error(`パスワードの変更に失敗しました: ${passError.message}`);
+  } catch (err) {
+    console.error("Prismaユーザー更新失敗:", err);
   }
 }
 
@@ -79,7 +135,6 @@ const dishSchema = z.object({
   tagsInput: z.string().optional(),
   imageFile: z.instanceof(File).optional(),
 });
-
 
 export async function createDish(formData: FormData) {
   const supabase = await createClient();
@@ -130,6 +185,18 @@ export async function createDish(formData: FormData) {
     : [];
 
   try {
+    const displayName = user.user_metadata?.name || user.email.split("@")[0] || "ユーザー";
+    await prisma.user.upsert({
+      where: { id: user.id }, // 必ず Auth UUID を基準にする
+      update: { email: user.email },
+      create: {
+        id: user.id,
+        email: user.email,
+        name: displayName,
+        password: "AUTH_USER",
+      },
+    });
+
     let tagConnectIds: { id: string }[] = [];
 
     if (tagNames.length > 0) {
@@ -174,7 +241,6 @@ export async function createDish(formData: FormData) {
 
   redirect("/menus");
 }
-
 
 export async function deleteDish(formData: FormData) {
   const supabase = await createClient();

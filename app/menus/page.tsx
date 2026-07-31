@@ -1,4 +1,3 @@
-// app/menus/page.tsx
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Header from "@/components/Header";
@@ -10,21 +9,12 @@ export default async function MenusPage() {
   const supabase = await createClient();
   const { data: { user: supabaseUser } } = await supabase.auth.getUser();
 
-  if (!supabaseUser || !supabaseUser.email) {
-    redirect("/login");
-  }
-
-  const dbUser = await prisma.user.findUnique({
-    where: { email: supabaseUser.email },
-    select: { id: true },
-  });
-
-  if (!dbUser) {
+  if (!supabaseUser) {
     redirect("/login");
   }
 
   const dishes = await prisma.dish.findMany({
-    where: { userId: dbUser.id },
+    where: { userId: supabaseUser.id },
     include: { tags: true },
     orderBy: { createdAt: "desc" },
   });
@@ -41,7 +31,6 @@ export default async function MenusPage() {
             ごはん登録・一覧
           </h2>
 
-          {/* クライアントコンポーネントに初期データを渡してレンダリング */}
           <MenuListManager initialDishes={dishes} />
 
         </div>

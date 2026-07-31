@@ -40,7 +40,6 @@ function HomePageContent() {
     }
     checkInitialUser();
 
-    // ⭕ 2. 状態変化のリスナー登録
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUserId(session?.user?.id || null);
       setAuthChecking(false);
@@ -59,6 +58,7 @@ function HomePageContent() {
     setHasSearched(true);
     setLoading(true);
     setError(null);
+    setResult(null);
 
     try {
       const response = await fetch("/api/recommend", {
@@ -67,7 +67,6 @@ function HomePageContent() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userId: userId,
           keyword: cleanKeyword,
         }),
       });
@@ -77,8 +76,35 @@ function HomePageContent() {
         throw new Error(errData.error || "メニューの決定に失敗しました。");
       }
 
-      const data: RecommendResponse = await response.json();
-      setResult(data);
+      const contentType = response.headers.get("content-type");
+
+      if (contentType && contentType.includes("text/event-stream")) {
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let fullText = "";
+
+        if (!reader) throw new Error("レスポンスの読み込みに失敗しました。");
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          fullText += decoder.decode(value, { stream: true });
+        }
+
+        const parsed = JSON.parse(fullText);
+        setResult({
+          dish: {
+            id: parsed.selectedId || "ai-gen",
+            name: parsed.name,
+            imageUrl: parsed.imageUrl || null,
+          },
+          reason: parsed.reason,
+          isAiGeneration: true,
+        });
+      } else {
+        const data: RecommendResponse = await response.json();
+        setResult(data);
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "予期せぬエラーが発生しました。";
       setError(errorMessage);
@@ -221,7 +247,6 @@ function HomePageContent() {
                 ) : null}
               </div>
 
-              {/* 再検索フォーム */}
               <div className="w-full text-center mb-8 px-2">
                 <h3 className="text-lg font-black mb-3 tracking-widest text-white drop-shadow-sm">
                   もう一回やる

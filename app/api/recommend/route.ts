@@ -1,23 +1,44 @@
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/utils/supabase/server";
 import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({});
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { userId, keyword } = body;
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!userId) {
-      return new Response(JSON.stringify({ error: "ユーザーIDが必要です。" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+    if (!user) {
+      return new Response(
+        JSON.stringify({ error: "認証が必要です。ログインしてください。" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
     }
+
+    const userId = user.id;
+
+    const body = await request.json();
+    const { keyword } = body;
 
     const cleanKeyword = keyword?.trim() || "なんでもいい";
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+    const displayName =
+      user.user_metadata?.name || user.email?.split("@")[0] || "ユーザー";
+    await prisma.user.upsert({
+      where: { id: userId },
+      update: { email: user.email },
+      create: {
+        id: userId,
+        email: user.email || "",
+        name: displayName,
+        password: "AUTH_USER",
+      },
+    });
 
     const recentLogs = await prisma.dishShowLog.findMany({
       where: {
@@ -29,6 +50,7 @@ export async function POST(request: Request) {
     });
 
     const excludedDishIds = recentLogs.map((log) => log.dishId);
+    
     const userDishes = await prisma.dish.findMany({
       where: { userId: userId },
       include: { tags: true },
@@ -42,11 +64,10 @@ export async function POST(request: Request) {
       availableDishes = userDishes;
     }
 
-    // -------------------------------------------------------------
-    // パターンA: 登録されているメニューがある場合
-    // -------------------------------------------------------------
     if (availableDishes.length > 0) {
-      const shuffledDishes = [...availableDishes].sort(() => Math.random() - 0.5);
+      const shuffledDishes = [...availableDishes].sort(
+        () => Math.random() - 0.5
+      );
       const menuListText = shuffledDishes
         .map((dish) => {
           const tagNames = dish.tags.map((t) => t.name).join(", ");
@@ -67,7 +88,7 @@ ${menuListText}`;
 
       try {
         const responseStream = await ai.models.generateContentStream({
-          model: "models/gemini-1.5-flash", // 正しいモデル名表記
+          model: "models/gemini-1.5-flash",
           contents: prompt,
           config: {
             temperature: 0.9,
@@ -100,7 +121,8 @@ ${menuListText}`;
               try {
                 const parsed = JSON.parse(fullText || "{}");
                 const matchedDish =
-                  availableDishes.find((d) => d.id === parsed.selectedId) || shuffledDishes[0];
+                  availableDishes.find((d) => d.id === parsed.selectedId) ||
+                  shuffledDishes[0];
 
                 await prisma.dishShowLog.create({
                   data: {
@@ -127,12 +149,14 @@ ${menuListText}`;
             Connection: "keep-alive",
           },
         });
-
       } catch (aiError) {
-        console.warn("Gemini APIエラー（クォータ制限等）のためフォールバック選定を行います:", aiError);
+        console.warn(
+          "Gemini APIエラー（クォータ制限等）のためフォールバック選定を行います:",
+          aiError
+        );
 
-        // AI呼び出しに失敗した場合は、フォールバックとしてランダム選定
-        const fallbackDish = shuffledDishes[Math.floor(Math.random() * shuffledDishes.length)];
+        const fallbackDish =
+          shuffledDishes[Math.floor(Math.random() * shuffledDishes.length)];
 
         await prisma.dishShowLog.create({
           data: {
@@ -157,13 +181,10 @@ ${menuListText}`;
       }
     }
 
-    // -------------------------------------------------------------
-    // パターンB: 登録メニューが1件もない場合
-    // -------------------------------------------------------------
     const freePrompt = `ユーザーの希望キーワードは「${cleanKeyword}」です。今日のごはんのおすすめメニューを1つ提案してください。毎回違うジャンルの料理を提案してください。`;
 
     const responseStream = await ai.models.generateContentStream({
-      model: "models/gemini-1.5-flash", // 正しいモデル名表記
+      model: "models/gemini-1.5-flash",
       contents: freePrompt,
       config: {
         temperature: 1.0,
@@ -205,12 +226,14 @@ ${menuListText}`;
         Connection: "keep-alive",
       },
     });
-
   } catch (error) {
     console.error("Recommend API Error:", error);
-    return new Response(JSON.stringify({ error: "メニューの決定に失敗しました。" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: "メニューの決定に失敗しました。" }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   }
 }

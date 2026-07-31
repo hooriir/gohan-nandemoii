@@ -8,7 +8,6 @@ import Button from "@/components/Button";
 import { createClient } from "@/utils/supabase/client";
 import GoogleAuthButton from "@/components/GoogleAuthButton";
 
-
 function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,7 +28,6 @@ function LoginForm() {
     try {
       const supabase = createClient();
       const cleanEmail = email.trim();
-      //  パスワードの trim() は除外（意図的な空白対策）
 
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
@@ -52,15 +50,13 @@ function LoginForm() {
       }
 
       console.log("ログイン成功！", data);
-      
+
       if (data.session) {
         await supabase.auth.setSession(data.session);
       }
 
       router.push("/");
-      setTimeout(() => {
-        router.refresh();
-      }, 300);
+      router.refresh();
 
     } catch (err: unknown) {
       console.error("システム例外エラー:", err);
@@ -128,27 +124,28 @@ function LoginForm() {
 
           <Button type="submit" text={isSubmitting ? "ログイン中..." : "ログイン"} variant="blue" />
 
-          {/* パスワードラベルの右側に再設定リンク */}
-          <div className="text-center">
+          <div className="text-center pt-1">
             <Link
               href="/forgot-password"
-              className="text-xs text-slate-400 hover:text-brand-blue hover:underline transition-all">
+              className="text-xs text-slate-400 hover:text-brand-blue hover:underline transition-all"
+            >
               パスワードをお忘れですか？
             </Link>
           </div>
 
-          <div className="pt-4 text-center border-t border-slate-100 mt-4">
-            <span className="text-xs text-slate-400">アカウントをお持ちでないですか？</span>
-            <Link href="/register">
-              <Button
-                text="新規登録はこちら"
-                variant="red"
-              />
-            </Link>
+          <div className="pt-4 text-center border-t border-slate-100 mt-4 space-y-3">
+            <div>
+              <p className="text-xs text-slate-400 mb-2">アカウントをお持ちでないですか？</p>
+              <Link 
+                href="/register" 
+                className="block w-full py-3 px-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-center text-sm transition-all shadow-sm"
+              >
+                新規登録はこちら
+              </Link>
+            </div>
+            
             <GoogleAuthButton label="Googleでログイン" />
           </div>
-
-            
         </form>
       </div>
     </div>

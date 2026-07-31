@@ -12,7 +12,7 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isSubmitting) return;
 
@@ -24,11 +24,8 @@ export default function ForgotPasswordPage() {
       const supabase = createClient();
       const cleanEmail = email.trim();
 
-      // 本番・ローカルでリダイレクト先を分岐
-      const redirectUrl =
-        process.env.NODE_ENV === "production"
-          ? "https://gohan-nandemoii.vercel.app/update-password"
-          : "http://localhost:3000/update-password";
+      const origin = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const redirectUrl = `${origin}/update-password`;
 
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(
         cleanEmail,
@@ -44,7 +41,6 @@ export default function ForgotPasswordPage() {
         return;
       }
 
-      // 送信成功時
       setMessage(
         "パスワード再設定用のメールを送信しました。\nメール内のリンクから新しいパスワードを設定してください。"
       );
@@ -61,7 +57,6 @@ export default function ForgotPasswordPage() {
     <div className="bg-brand-bg min-h-screen flex items-center justify-center p-4">
       <div className="bg-white p-10 rounded-2xl shadow-xl w-full max-w-[400px] text-center">
         
-        {/* ロゴ */}
         <h1 className="flex justify-center mb-2">
           <Image
             src="/images/gohan_bl.svg"
@@ -81,14 +76,12 @@ export default function ForgotPasswordPage() {
           パスワード再設定用のリンクをお送りします。
         </p>
 
-        {/* 成功メッセージ */}
         {message && (
           <div className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-medium py-3 px-4 rounded-xl mb-4 text-left whitespace-pre-wrap">
             {message}
           </div>
         )}
 
-        {/* エラーメッセージ */}
         {error && (
           <p className="bg-red-50 text-red-600 border border-red-200 text-sm font-medium py-2 px-3 rounded-xl mb-4 text-left whitespace-pre-wrap">
             {error}

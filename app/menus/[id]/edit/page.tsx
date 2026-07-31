@@ -12,14 +12,26 @@ interface EditPageProps {
 export default async function EditMenuPage({ params }: EditPageProps) {
   const supabase = await createClient();
   const { data: { user: supabaseUser } } = await supabase.auth.getUser();
-  
+
   if (!supabaseUser || !supabaseUser.email) {
     redirect("/login");
   }
 
+  const dbUser = await prisma.user.findUnique({
+    where: { email: supabaseUser.email },
+  });
+
+  if (!dbUser) {
+    redirect("/login");
+  }
+
   const { id } = await params;
-  const dish = await prisma.dish.findUnique({
-    where: { id },
+
+  const dish = await prisma.dish.findFirst({
+    where: { 
+      id,
+      userId: dbUser.id,
+    },
     include: { tags: true },
   });
 
@@ -27,25 +39,49 @@ export default async function EditMenuPage({ params }: EditPageProps) {
     notFound();
   }
 
-  const tagsString = dish?.tags.map((t) => t.name).join(" ") ?? "";
+  const tagsString = dish.tags.map((t) => t.name).join(" ");
 
   async function updateDish(formData: FormData) {
     "use server";
-    
+
+    const supabase = await createClient();
+    const { data: { user: actionUser } } = await supabase.auth.getUser();
+
+    if (!actionUser || !actionUser.email) {
+      redirect("/login");
+    }
+
+    const actionDbUser = await prisma.user.findUnique({
+      where: { email: actionUser.email },
+    });
+
+    if (!actionDbUser) {
+      redirect("/login");
+    }
+
+    const existingDish = await prisma.dish.findFirst({
+      where: {
+        id,
+        userId: actionDbUser.id,
+      },
+    });
+
+    if (!existingDish) {
+      redirect("/menus");
+    }
+
     const name = formData.get("name") as string;
     const tagsInput = formData.get("tagsInput") as string;
     const imageFile = formData.get("image") as File;
 
     if (!name) return;
 
-    let imageUrl = dish?.imageUrl ?? null;
+    let imageUrl = existingDish.imageUrl;
 
-    // 画像が添付されていて、ファイルサイズが0より大きい場合のみアップロード
     if (imageFile && imageFile.size > 0) {
-      const supabase = await createClient();
-      const fileExt = imageFile.name.split('.').pop();
+      const fileExt = imageFile.name.split(".").pop();
       const fileName = `${crypto.randomUUID()}-${Date.now()}.${fileExt}`;
-      
+
       const { error } = await supabase.storage
         .from("dish-images")
         .upload(fileName, imageFile);
@@ -62,14 +98,13 @@ export default async function EditMenuPage({ params }: EditPageProps) {
       imageUrl = publicUrl;
     }
 
-    // データベースを更新
     await prisma.dish.update({
       where: { id },
       data: {
         name,
         imageUrl,
         tags: {
-          set: [], // タグを一度リセット
+          set: [],
           connectOrCreate: tagsInput
             ? tagsInput
                 .split(/\s+/)
@@ -83,11 +118,9 @@ export default async function EditMenuPage({ params }: EditPageProps) {
       },
     });
 
-    // ⭕ 変更を一覧ページに即時反映させるためキャッシュを破棄
     revalidatePath("/menus");
     revalidatePath(`/menus/${id}/edit`);
 
-    // ⭕ 処理の最後にリダイレクト
     redirect("/menus");
   }
 
@@ -99,14 +132,13 @@ export default async function EditMenuPage({ params }: EditPageProps) {
         </h2>
 
         <form action={updateDish} className="space-y-4 text-left">
-
           <div>
             <label className="block text-xs font-bold text-slate-500 mb-1">
               ごはんの写真（変更する場合のみ選択）
             </label>
-            {dish?.imageUrl && (
+            {dish.imageUrl && (
               <div className="mb-2 text-xs text-slate-400">
-                現在の画像が登録されています。変更したい場合は下のボタンから新しい画像を選んでください。
+                現在の画像が登録されています。変更したい場合は新しい画像を選択してください。
               </div>
             )}
             <input
@@ -118,22 +150,26 @@ export default async function EditMenuPage({ params }: EditPageProps) {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-500 mb-1">ごはん名</label>
+            <label className="block text-xs font-bold text-slate-500 mb-1">
+              ごはん名
+            </label>
             <input
               type="text"
               name="name"
               required
-              defaultValue={dish?.name} 
+              defaultValue={dish.name}
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 outline-none focus:border-brand-blue focus:bg-white transition-all"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-500 mb-1">キーワード</label>
+            <label className="block text-xs font-bold text-slate-500 mb-1">
+              キーワード
+            </label>
             <input
               type="text"
               name="tagsInput"
-              defaultValue={tagsString} 
+              defaultValue={tagsString}
               placeholder="キーワード（例：さっぱり 日本食）"
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 outline-none focus:border-brand-blue focus:bg-white transition-all"
             />
@@ -142,7 +178,7 @@ export default async function EditMenuPage({ params }: EditPageProps) {
           <div className="flex gap-3 pt-4 items-center">
             <Link
               href="/menus"
-              className="flex-1 border-2 border-sky-400 hover:bg-sky-100 text-sky-400 font-bold text-center mt-4 py-3 rounded-lg transition-colors leading-normal"
+              className="flex-1 border-2 border-sky-400 hover:bg-sky-100 text-sky-400 font-bold text-center py-3 rounded-lg transition-colors leading-normal text-sm"
             >
               キャンセル
             </Link>

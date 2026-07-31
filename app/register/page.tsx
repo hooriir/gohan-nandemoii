@@ -16,6 +16,7 @@ export default function RegisterPage() {
               alt="ごはん？なんでもいい～"
               width={160}
               height={72}          
+              style={{ width: "160px", height: "auto" }}
             />
           </Link>
         </h1>
@@ -62,13 +63,11 @@ export default function RegisterPage() {
           <div className="pt-4 text-center border-t border-slate-100 mt-4 space-y-3">
             <div>
               <span className="text-xs text-slate-400 block mb-2">すでにアカウントをお持ちですか？</span>
-              {/* ⭕ リンク先を /login に修正 */}
-              <Link href="/login" className="block w-full">
-                <Button
-                  type="button"
-                  text="ログインはこちら"
-                  variant="blue"
-                />
+              <Link 
+                href="/login" 
+                className="block w-full py-3 px-4 bg-sky-400 hover:bg-sky-500 text-white font-bold rounded-xl text-center text-sm transition-all shadow-sm"
+              >
+                ログインはこちら
               </Link>
             </div>
 

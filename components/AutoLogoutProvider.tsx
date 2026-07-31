@@ -1,21 +1,22 @@
-// components/AutoLogoutProvider.tsx
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useMemo } from "react";
 import { createClient } from "@/utils/supabase/client";
 
 const TIMEOUT_MS = 15 * 60 * 1000;
+const THROTTLE_MS = 1000;
 
 export default function AutoLogoutProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const supabase = createClient();
 
-  // 1. ログアウト実行処理
+  const lastActivityRef = useRef<number>(0);
+
+  const supabase = useMemo(() => createClient(), []);
+
   const handleLogout = useCallback(async () => {
     try {
       await supabase.auth.signOut();
@@ -25,7 +26,6 @@ export default function AutoLogoutProvider({
     }
   }, [supabase]);
 
-  // 2. タイマーリセット処理
   const resetTimer = useCallback(() => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
@@ -33,30 +33,47 @@ export default function AutoLogoutProvider({
     timerRef.current = setTimeout(handleLogout, TIMEOUT_MS);
   }, [handleLogout]);
 
-  // 3. 認証状態の監視とタイマーの制御
   useEffect(() => {
     const events = ["mousemove", "keydown", "click", "scroll", "touchstart"];
 
+    lastActivityRef.current = Date.now();
+
     const handleUserActivity = () => {
-      resetTimer();
+      const now = Date.now();
+      if (now - lastActivityRef.current > THROTTLE_MS) {
+        lastActivityRef.current = now;
+        resetTimer();
+      }
     };
 
-    // Supabaseの認証状態の変化を監視（更新直後のセッション確定も取れる）
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const setupListeners = () => {
+      events.forEach((e) =>
+        window.addEventListener(e, handleUserActivity, { passive: true })
+      );
+    };
+
+    const removeListeners = () => {
+      events.forEach((e) =>
+        window.removeEventListener(e, handleUserActivity)
+      );
+    };
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
-        // ログイン中の場合のみタイマーをセット＆イベント監視開始
+        lastActivityRef.current = Date.now();
         resetTimer();
-        events.forEach((e) => window.addEventListener(e, handleUserActivity, { passive: true }));
+        setupListeners();
       } else {
-        // ログアウト状態ならタイマー解除＆イベント削除
         if (timerRef.current) clearTimeout(timerRef.current);
-        events.forEach((e) => window.removeEventListener(e, handleUserActivity));
+        removeListeners();
       }
     });
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
-      events.forEach((e) => window.removeEventListener(e, handleUserActivity));
+      removeListeners();
       subscription.unsubscribe();
     };
   }, [supabase, resetTimer]);
