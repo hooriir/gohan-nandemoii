@@ -1,6 +1,6 @@
 # ごはん？なんでもいい～
 
-<img width="860" height="672" alt="スクリーンショット 2026-07-24 232617" src="https://github.com/user-attachments/assets/1cd21ffc-6241-4752-8b50-7631dd503b6a" />
+<img width="400" height="auto" alt="スクリーンショット 2026-07-24 232617" src="https://github.com/user-attachments/assets/1cd21ffc-6241-4752-8b50-7631dd503b6a" />
 
 ## アプリURL
 https://gohan-nandemoii.vercel.app/
@@ -30,9 +30,10 @@ https://gohan-nandemoii.vercel.app/
 - **被り防止機能（履歴連携）**: 直近1週間に食べたごはん（メニュー）は検索結果から自動で除外
 
 ## 画面イメージ / 操作方法
-1. デモアカウントでログインします。
-2. あらかじめサンプルメニュー（和食・洋食・中華など）と利用履歴が登録されています。
-3. 「検索」画面でキーワード検索や絞り込みを試していただくことで、検索結果の挙動をご確認いただけます。
+<img width="400" height="242" alt="操作方法" src="https://github.com/user-attachments/assets/a3347236-285e-48fe-960c-166c048e64ad" />  
+
+1. デモアカウントでログインするとメニューを検索する画面に切り替わります。
+2. キーワードを入力して赤いボタンをクリックすると検索結果の挙動をご確認いただけます。
 
 ## 使用技術（Tech Stack）
 - **フレームワーク / ライブラリ:** Next.js (App Router), React, TypeScript
