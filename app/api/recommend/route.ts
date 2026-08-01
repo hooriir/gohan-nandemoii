@@ -68,47 +68,38 @@ export async function POST(request: Request) {
     // Pattern A: ユーザー登録メニューが存在する場合
     // ==========================================
     if (availableDishes.length > 0) {
-      // ▼▼▼ キーワードに一致する料理を優先的に絞り込む処理を追加 ▼▼▼
       let targetDishes = availableDishes;
       if (cleanKeyword !== "なんでもいい") {
-        const matched = availableDishes.filter(
-          (dish) =>
-            dish.name.includes(cleanKeyword) ||
-            dish.tags.some((t) => t.name.includes(cleanKeyword))
+        const searchKeywords = cleanKeyword
+          .replace(/[,，、]/g, " ")
+          .split(/\s+/)
+          .filter((k: string) => k.length > 0);
+
+        const matched = availableDishes.filter((dish) =>
+          searchKeywords.every(
+            (kw: string) =>
+              dish.name.includes(kw) ||
+              dish.tags.some((t) => t.name.includes(kw))
+          )
         );
+
         if (matched.length > 0) {
           targetDishes = matched;
+        } else {
+          targetDishes = availableDishes;
         }
       }
 
-      const shuffledDishes = [...targetDishes].sort(
-        () => Math.random() - 0.5
-      );
-      const menuListText = shuffledDishes
-        .map((dish) => {
-          const tagNames = dish.tags.map((t) => t.name).join(", ");
-          return `- ID: ${dish.id} | 料理名: ${dish.name} | タグ・キーワード: ${tagNames || "なし"}`;
-        })
-        .join("\n");
+      const selectedDish = targetDishes[Math.floor(Math.random() * targetDishes.length)];
 
       const prompt = `あなたは献立提案アシスタントです。
 ユーザーの要望: 「${cleanKeyword}」
+選ばれた料理: 「${selectedDish.name}」
 
-以下の【候補メニューリスト】の中から、ユーザーの要望に合致する料理を【必ず1つだけ】選んでください。
-
-【選択における必須優先ルール】
-1. ユーザーの要望が「なんでもいい」以外の場合：
-   - 候補リストはすでに要望に沿った料理に絞り込まれています。この中から最適なものを1つ選んでください。
-2. ユーザーの要望が「なんでもいい」の場合：
-   - 候補リストの中からバリエーション豊かにランダム感をもって選んでください。
-3. 必ずリスト内に存在する料理の ID と 料理名 を選んでください。
-4. 理由（reason）は、ユーザーの要望（${cleanKeyword}）にどう応えたかを含めて、50文字程度で親しみやすく書いてください。
-
-【候補メニューリスト】
-${menuListText}`;
+この料理がユーザーの要望や今の気分にどのように合っているか、親しみやすく50文字程度で「おすすめの理由」を作成してください。`;
 
       try {
-        const responseStream = await ai.models.generateContentStream({
+        const response = await ai.models.generateContent({
           model: "models/gemini-1.5-flash",
           contents: prompt,
           config: {
@@ -117,80 +108,20 @@ ${menuListText}`;
             responseSchema: {
               type: "OBJECT",
               properties: {
-                selectedId: { type: "STRING", description: "選んだ料理のID" },
-                name: { type: "STRING", description: "選んだ料理名" },
                 reason: { type: "STRING", description: "選んだ理由" },
               },
-              required: ["selectedId", "name", "reason"],
+              required: ["reason"],
             },
           },
         });
 
-        let fullText = "";
-
-        const stream = new ReadableStream({
-          async start(controller) {
-            const encoder = new TextEncoder();
-            try {
-              for await (const chunk of responseStream) {
-                if (chunk.text) {
-                  fullText += chunk.text;
-                  controller.enqueue(encoder.encode(chunk.text));
-                }
-              }
-
-              try {
-                const parsed = JSON.parse(fullText || "{}");
-                const matchedDish =
-                  availableDishes.find((d) => d.id === parsed.selectedId) ||
-                  shuffledDishes[0] ||
-                  availableDishes[0];
-
-                await prisma.dishShowLog.create({
-                  data: {
-                    userId: userId,
-                    dishId: matchedDish.id,
-                    keyword: cleanKeyword,
-                  },
-                });
-              } catch (dbError) {
-                console.error("DB保存またはパース失敗:", dbError);
-              }
-
-              controller.close();
-            } catch (err) {
-              controller.error(err);
-            }
-          },
-        });
-
-        return new Response(stream, {
-          headers: {
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            Connection: "keep-alive",
-          },
-        });
-      } catch (aiError) {
-        console.warn(
-          "Gemini APIエラーのためフォールバック選定を行います:",
-          aiError
-        );
-
-        const matchedDishes = shuffledDishes.filter(
-          (d) =>
-            d.name.includes(cleanKeyword) ||
-            d.tags.some((t) => t.name.includes(cleanKeyword))
-        );
-        const fallbackDish =
-          matchedDishes.length > 0
-            ? matchedDishes[Math.floor(Math.random() * matchedDishes.length)]
-            : shuffledDishes[Math.floor(Math.random() * shuffledDishes.length)];
+        const parsed = JSON.parse(response.text || "{}");
+        const reasonText = parsed.reason || `「${cleanKeyword}」にぴったりなメニューです！`;
 
         await prisma.dishShowLog.create({
           data: {
             userId: userId,
-            dishId: fallbackDish.id,
+            dishId: selectedDish.id,
             keyword: cleanKeyword,
           },
         });
@@ -198,9 +129,33 @@ ${menuListText}`;
         return new Response(
           JSON.stringify({
             dish: {
-              id: fallbackDish.id,
-              name: fallbackDish.name,
-              imageUrl: fallbackDish.imageUrl || null,
+              id: selectedDish.id,
+              name: selectedDish.name,
+              imageUrl: selectedDish.imageUrl || null,
+            },
+            reason: reasonText,
+            isAiGeneration: false,
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+
+      } catch (aiError) {
+        console.warn("Gemini APIエラーのためフォールバックします:", aiError);
+
+        await prisma.dishShowLog.create({
+          data: {
+            userId: userId,
+            dishId: selectedDish.id,
+            keyword: cleanKeyword,
+          },
+        });
+
+        return new Response(
+          JSON.stringify({
+            dish: {
+              id: selectedDish.id,
+              name: selectedDish.name,
+              imageUrl: selectedDish.imageUrl || null,
             },
             reason: `「${cleanKeyword}」にぴったりなメニューです！`,
             isAiGeneration: false,

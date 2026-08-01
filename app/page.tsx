@@ -76,35 +76,10 @@ function HomePageContent() {
         throw new Error(errData.error || "メニューの決定に失敗しました。");
       }
 
-      const contentType = response.headers.get("content-type");
+      // ▼▼▼ 常に通常の JSON として受け取るよう修正 ▼▼▼
+      const data: RecommendResponse = await response.json();
+      setResult(data);
 
-      if (contentType && contentType.includes("text/event-stream")) {
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        let fullText = "";
-
-        if (!reader) throw new Error("レスポンスの読み込みに失敗しました。");
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          fullText += decoder.decode(value, { stream: true });
-        }
-
-        const parsed = JSON.parse(fullText);
-        setResult({
-          dish: {
-            id: parsed.selectedId || "ai-gen",
-            name: parsed.name,
-            imageUrl: parsed.imageUrl || null,
-          },
-          reason: parsed.reason,
-          isAiGeneration: true,
-        });
-      } else {
-        const data: RecommendResponse = await response.json();
-        setResult(data);
-      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "予期せぬエラーが発生しました。";
       setError(errorMessage);
