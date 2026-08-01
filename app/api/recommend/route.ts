@@ -68,7 +68,20 @@ export async function POST(request: Request) {
     // Pattern A: ユーザー登録メニューが存在する場合
     // ==========================================
     if (availableDishes.length > 0) {
-      const shuffledDishes = [...availableDishes].sort(
+      // ▼▼▼ キーワードに一致する料理を優先的に絞り込む処理を追加 ▼▼▼
+      let targetDishes = availableDishes;
+      if (cleanKeyword !== "なんでもいい") {
+        const matched = availableDishes.filter(
+          (dish) =>
+            dish.name.includes(cleanKeyword) ||
+            dish.tags.some((t) => t.name.includes(cleanKeyword))
+        );
+        if (matched.length > 0) {
+          targetDishes = matched;
+        }
+      }
+
+      const shuffledDishes = [...targetDishes].sort(
         () => Math.random() - 0.5
       );
       const menuListText = shuffledDishes
@@ -85,8 +98,7 @@ export async function POST(request: Request) {
 
 【選択における必須優先ルール】
 1. ユーザーの要望が「なんでもいい」以外の場合：
-   - 料理名や【タグ・キーワード】の中に、ユーザーの要望「${cleanKeyword}」と関連する単語・意味が含まれている料理を【最優先】で選んでください。
-   - 完璧に一致するものがなければ、できる限り雰囲気が近い料理を選んでください。
+   - 候補リストはすでに要望に沿った料理に絞り込まれています。この中から最適なものを1つ選んでください。
 2. ユーザーの要望が「なんでもいい」の場合：
    - 候補リストの中からバリエーション豊かにランダム感をもって選んでください。
 3. 必ずリスト内に存在する料理の ID と 料理名 を選んでください。
@@ -131,7 +143,8 @@ ${menuListText}`;
                 const parsed = JSON.parse(fullText || "{}");
                 const matchedDish =
                   availableDishes.find((d) => d.id === parsed.selectedId) ||
-                  shuffledDishes[0];
+                  shuffledDishes[0] ||
+                  availableDishes[0];
 
                 await prisma.dishShowLog.create({
                   data: {
@@ -199,7 +212,6 @@ ${menuListText}`;
 
     // ==========================================
     // Pattern B: メニュー0件時の自由提案
-    // レスポンスの構造: { dish: { name }, reason, isAiGeneration: true }
     // ==========================================
     const freePrompt = `ユーザーの希望キーワードは「${cleanKeyword}」です。今日のごはんのおすすめメニューを1つ提案してください。「${cleanKeyword}」に合ったジャンルや味付けの料理を選んでください。`;
 
@@ -241,7 +253,6 @@ ${menuListText}`;
     } catch (patternBError) {
       console.error("Pattern B AI生成エラー:", patternBError);
 
-      // Pattern B エラー時のフォールバック返却
       return new Response(
         JSON.stringify({
           dish: {
