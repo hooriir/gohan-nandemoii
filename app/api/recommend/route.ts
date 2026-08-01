@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       user.user_metadata?.name || user.email?.split("@")[0] || "ユーザー";
     await prisma.user.upsert({
       where: { id: userId },
-      update: { email: user.email },
+      update: { email: user.email || "" },
       create: {
         id: userId,
         email: user.email || "",
@@ -64,6 +64,9 @@ export async function POST(request: Request) {
       availableDishes = userDishes;
     }
 
+    // ==========================================
+    // Pattern A: ユーザー登録メニューが存在する場合
+    // ==========================================
     if (availableDishes.length > 0) {
       const shuffledDishes = [...availableDishes].sort(
         () => Math.random() - 0.5
@@ -97,7 +100,7 @@ ${menuListText}`;
           model: "models/gemini-1.5-flash",
           contents: prompt,
           config: {
-            temperature: 0.7, // 厳密性を高めるため少し下げる (0.9 -> 0.7)
+            temperature: 0.7,
             responseMimeType: "application/json",
             responseSchema: {
               type: "OBJECT",
@@ -157,11 +160,10 @@ ${menuListText}`;
         });
       } catch (aiError) {
         console.warn(
-          "Gemini APIエラー（クォータ制限等）のためフォールバック選定を行います:",
+          "Gemini APIエラーのためフォールバック選定を行います:",
           aiError
         );
 
-        // フォールバック時もキーワードマッチを優先
         const matchedDishes = shuffledDishes.filter(
           (d) =>
             d.name.includes(cleanKeyword) ||
@@ -195,51 +197,62 @@ ${menuListText}`;
       }
     }
 
+    // ==========================================
+    // Pattern B: メニュー0件時の自由提案
+    // レスポンスの構造: { dish: { name }, reason, isAiGeneration: true }
+    // ==========================================
     const freePrompt = `ユーザーの希望キーワードは「${cleanKeyword}」です。今日のごはんのおすすめメニューを1つ提案してください。「${cleanKeyword}」に合ったジャンルや味付けの料理を選んでください。`;
 
-    const responseStream = await ai.models.generateContentStream({
-      model: "models/gemini-1.5-flash",
-      contents: freePrompt,
-      config: {
-        temperature: 0.8,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "OBJECT",
-          properties: {
-            name: { type: "STRING", description: "料理名" },
-            reason: {
-              type: "STRING",
-              description: "おすすめの理由（50文字程度で親しみやすく）",
+    try {
+      const response = await ai.models.generateContent({
+        model: "models/gemini-1.5-flash",
+        contents: freePrompt,
+        config: {
+          temperature: 0.8,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              name: { type: "STRING", description: "料理名" },
+              reason: {
+                type: "STRING",
+                description: "おすすめの理由（50文字程度で親しみやすく）",
+              },
             },
+            required: ["name", "reason"],
           },
-          required: ["name", "reason"],
         },
-      },
-    });
+      });
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        const encoder = new TextEncoder();
-        try {
-          for await (const chunk of responseStream) {
-            if (chunk.text) {
-              controller.enqueue(encoder.encode(chunk.text));
-            }
-          }
-          controller.close();
-        } catch (err) {
-          controller.error(err);
-        }
-      },
-    });
+      const parsed = JSON.parse(response.text || "{}");
 
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      },
-    });
+      return new Response(
+        JSON.stringify({
+          dish: {
+            name: parsed.name || "きつねうどん",
+          },
+          reason:
+            parsed.reason ||
+            `「${cleanKeyword}」に合わせて作ってみるのはいかがでしょうか？`,
+          isAiGeneration: true,
+        }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    } catch (patternBError) {
+      console.error("Pattern B AI生成エラー:", patternBError);
+
+      // Pattern B エラー時のフォールバック返却
+      return new Response(
+        JSON.stringify({
+          dish: {
+            name: "カレーライス",
+          },
+          reason: `「${cleanKeyword}」な気分の時は定番のカレーがおすすめです！`,
+          isAiGeneration: true,
+        }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
   } catch (error) {
     console.error("Recommend API Error:", error);
     return new Response(

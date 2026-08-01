@@ -13,6 +13,7 @@ export default function DishForm({ addOptimisticDish }: DishFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -39,9 +40,13 @@ export default function DishForm({ addOptimisticDish }: DishFormProps) {
     const tagsInput = formData.get("tagsInput") as string;
     const imageFile = formData.get("imageFile") as File;
 
-    if (!name) return;
+    if (!name || !name.trim()) {
+      setErrorMessage("料理名を入力してください。");
+      return;
+    }
 
     setIsSubmitting(true);
+    setErrorMessage(null);
 
     try {
       const tags = tagsInput
@@ -70,9 +75,9 @@ export default function DishForm({ addOptimisticDish }: DishFormProps) {
       formRef.current?.reset();
       setPreviewUrl(null);
 
+      // Server Action を実行 (戻り値による型エラーを防ぎ、例外は catch でハンドリング)
       await createDish(formData);
     } catch (error: unknown) {
-      // ⭕ 型ガードを行って NEXT_REDIRECT の例外を無視する
       if (
         typeof error === "object" &&
         error !== null &&
@@ -84,7 +89,7 @@ export default function DishForm({ addOptimisticDish }: DishFormProps) {
       }
 
       console.error("料理の登録に失敗しました:", error);
-      alert("登録中にエラーが発生しました。");
+      setErrorMessage("登録中にエラーが発生しました。時間をおいて再度お試しください。");
     } finally {
       setIsSubmitting(false);
     }
@@ -92,6 +97,13 @@ export default function DishForm({ addOptimisticDish }: DishFormProps) {
 
   return (
     <form ref={formRef} action={handleAction} className="flex flex-col gap-4 max-w-sm mx-auto">
+      {/* エラーメッセージ表示エリア */}
+      {errorMessage && (
+        <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-semibold leading-relaxed">
+          {errorMessage}
+        </div>
+      )}
+
       <div>
         <input
           type="text"
