@@ -34,19 +34,34 @@ export async function GET(request: Request) {
     user.email.split("@")[0] ||
     "ユーザー";
 
-  await prisma.user.upsert({
-    where: { id: user.id },
-    update: {
-      email: user.email,
-      name: displayName,
-    },
-    create: {
-      id: user.id,
-      email: user.email,
-      name: displayName,
-      password: "GOOGLE_OAUTH_USER",
+  // ★ 1. ID または Email で既存ユーザーを検索
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      OR: [{ id: user.id }, { email: user.email }],
     },
   });
+
+  if (existingUser) {
+    // ★ 2. 既存ユーザーがいる場合は ID・Email・名前を同期更新
+    await prisma.user.update({
+      where: { id: existingUser.id },
+      data: {
+        id: user.id, // Supabase Auth の最新 ID に同期
+        email: user.email,
+        name: displayName,
+      },
+    });
+  } else {
+    // ★ 3. レコードが存在しない場合のみ新規作成
+    await prisma.user.create({
+      data: {
+        id: user.id,
+        email: user.email,
+        name: displayName,
+        password: "GOOGLE_OAUTH_USER",
+      },
+    });
+  }
 
   const destination =
     next.startsWith("/") && !next.startsWith("//") ? next : "/";

@@ -71,17 +71,23 @@ export async function POST(request: Request) {
       const menuListText = shuffledDishes
         .map((dish) => {
           const tagNames = dish.tags.map((t) => t.name).join(", ");
-          return `- ID: ${dish.id} | 料理名: ${dish.name} | タグ: ${tagNames || "なし"}`;
+          return `- ID: ${dish.id} | 料理名: ${dish.name} | タグ・キーワード: ${tagNames || "なし"}`;
         })
         .join("\n");
 
       const prompt = `あなたは献立提案アシスタントです。
-以下の【候補メニューリスト】の中から、ユーザーの要望「${cleanKeyword}」にぴったりな料理を【必ず1つだけ】選んでください。
+ユーザーの要望: 「${cleanKeyword}」
 
-【重要ルール】
-- ユーザーの要望が「なんでもいい」の場合は、候補リストの中からバリエーション豊かにランダム感をもって選んでください。
-- 必ずリスト内に存在する料理の ID と 料理名 を選んでください。
-- 理由（reason）は、なぜその料理をおすすめしたのかを50文字程度で親しみやすく書いてください。
+以下の【候補メニューリスト】の中から、ユーザーの要望に合致する料理を【必ず1つだけ】選んでください。
+
+【選択における必須優先ルール】
+1. ユーザーの要望が「なんでもいい」以外の場合：
+   - 料理名や【タグ・キーワード】の中に、ユーザーの要望「${cleanKeyword}」と関連する単語・意味が含まれている料理を【最優先】で選んでください。
+   - 完璧に一致するものがなければ、できる限り雰囲気が近い料理を選んでください。
+2. ユーザーの要望が「なんでもいい」の場合：
+   - 候補リストの中からバリエーション豊かにランダム感をもって選んでください。
+3. 必ずリスト内に存在する料理の ID と 料理名 を選んでください。
+4. 理由（reason）は、ユーザーの要望（${cleanKeyword}）にどう応えたかを含めて、50文字程度で親しみやすく書いてください。
 
 【候補メニューリスト】
 ${menuListText}`;
@@ -91,7 +97,7 @@ ${menuListText}`;
           model: "models/gemini-1.5-flash",
           contents: prompt,
           config: {
-            temperature: 0.9,
+            temperature: 0.7, // 厳密性を高めるため少し下げる (0.9 -> 0.7)
             responseMimeType: "application/json",
             responseSchema: {
               type: "OBJECT",
@@ -155,8 +161,16 @@ ${menuListText}`;
           aiError
         );
 
+        // フォールバック時もキーワードマッチを優先
+        const matchedDishes = shuffledDishes.filter(
+          (d) =>
+            d.name.includes(cleanKeyword) ||
+            d.tags.some((t) => t.name.includes(cleanKeyword))
+        );
         const fallbackDish =
-          shuffledDishes[Math.floor(Math.random() * shuffledDishes.length)];
+          matchedDishes.length > 0
+            ? matchedDishes[Math.floor(Math.random() * matchedDishes.length)]
+            : shuffledDishes[Math.floor(Math.random() * shuffledDishes.length)];
 
         await prisma.dishShowLog.create({
           data: {
@@ -173,7 +187,7 @@ ${menuListText}`;
               name: fallbackDish.name,
               imageUrl: fallbackDish.imageUrl || null,
             },
-            reason: `本日のおすすめメニューです！`,
+            reason: `「${cleanKeyword}」にぴったりなメニューです！`,
             isAiGeneration: false,
           }),
           { headers: { "Content-Type": "application/json" } }
@@ -181,13 +195,13 @@ ${menuListText}`;
       }
     }
 
-    const freePrompt = `ユーザーの希望キーワードは「${cleanKeyword}」です。今日のごはんのおすすめメニューを1つ提案してください。毎回違うジャンルの料理を提案してください。`;
+    const freePrompt = `ユーザーの希望キーワードは「${cleanKeyword}」です。今日のごはんのおすすめメニューを1つ提案してください。「${cleanKeyword}」に合ったジャンルや味付けの料理を選んでください。`;
 
     const responseStream = await ai.models.generateContentStream({
       model: "models/gemini-1.5-flash",
       contents: freePrompt,
       config: {
-        temperature: 1.0,
+        temperature: 0.8,
         responseMimeType: "application/json",
         responseSchema: {
           type: "OBJECT",

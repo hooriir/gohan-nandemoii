@@ -128,24 +128,16 @@ function HomePageContent() {
     handleSearch(keyword);
   };
 
-  if (authChecking) {
-    return (
-      <div className="bg-[#53cbfb] min-h-screen flex flex-col items-center justify-center text-white font-bold text-lg">
-        読み込み中...
-      </div>
-    );
-  }
-
   return (
-    <div className={`bg-[#53cbfb] min-h-screen flex flex-col items-center p-4 text-white font-sans select-none ${
-      isLoggedIn ? "justify-start" : "justify-center"
-    }`}>
-      
-      {!isLoggedIn ? (
-        <Header />
+    <div className="bg-[#53cbfb] min-h-screen flex flex-col items-center p-4 text-white font-sans select-none justify-start">
+      <Header />
+
+      {authChecking ? (
+        <div className="w-full max-w-xl text-center py-12 flex flex-col items-center opacity-0 min-h-[300px]" />
+      ) : !isLoggedIn ? (
+        null
       ) : (
         <>
-          <Header />
           {!hasSearched ? (
             <div className="w-full max-w-xl text-center py-12 flex flex-col items-center">
               <p className="text-2xl font-black mb-8 tracking-wider">今日のごはんは．．．？</p>
@@ -292,8 +284,8 @@ function HomePageContent() {
 export default function HomePage() {
   return (
     <Suspense fallback={
-      <div className="bg-[#53cbfb] min-h-screen flex flex-col items-center justify-center text-white font-bold text-lg">
-        読み込み中...
+      <div className="bg-[#53cbfb] min-h-screen flex flex-col items-center justify-start p-4 text-white font-bold text-lg">
+        <Header />
       </div>
     }>
       <HomePageContent />

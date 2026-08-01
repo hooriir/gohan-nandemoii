@@ -79,6 +79,11 @@ export async function updateProfile(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("ログインしていません");
 
+  // ★ Google認証ユーザーかどうか判定
+  const isGoogleUser =
+    user.app_metadata?.provider === "google" ||
+    user.identities?.some((identity) => identity.provider === "google");
+
   const rawData = Object.fromEntries(formData.entries());
   const validatedFields = profileSchema.safeParse(rawData);
 
@@ -99,15 +104,18 @@ export async function updateProfile(formData: FormData) {
     data: { name },
   };
 
-  if (email && email !== user.email) {
-    updateAttributes.email = email;
-  }
-
-  if (password && password.trim() !== "") {
-    if (password.length < 6) {
-      throw new Error("新しいパスワードは6文字以上で入力してください");
+  // ★ Googleユーザーでない（通常ユーザー）場合のみ、メールやパスワードの更新を許可
+  if (!isGoogleUser) {
+    if (email && email !== user.email) {
+      updateAttributes.email = email;
     }
-    updateAttributes.password = password;
+
+    if (password && password.trim() !== "") {
+      if (password.length < 6) {
+        throw new Error("新しいパスワードは6文字以上で入力してください");
+      }
+      updateAttributes.password = password;
+    }
   }
 
   // 1. Supabase Auth 側の更新
@@ -122,7 +130,8 @@ export async function updateProfile(formData: FormData) {
       where: { id: user.id },
       data: {
         name,
-        email: email || user.email,
+        // Googleユーザーの場合は既存のemailを固定して維持
+        email: isGoogleUser ? user.email : (email || user.email),
       },
     });
   } catch (err) {

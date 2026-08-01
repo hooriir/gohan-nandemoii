@@ -178,7 +178,7 @@ export default async function EditMenuPage({ params }: EditPageProps) {
           <div className="flex gap-3 pt-4 items-center">
             <Link
               href="/menus"
-              className="flex-1 border-2 border-sky-400 hover:bg-sky-100 text-sky-400 font-bold text-center py-3 rounded-lg transition-colors leading-normal text-sm"
+              className="flex-1 border-2 border-sky-400 hover:bg-sky-100 text-sky-400 font-bold text-center mt-4 py-3 rounded-lg transition-colors leading-normal text-sm"
             >
               キャンセル
             </Link>

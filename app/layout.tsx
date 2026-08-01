@@ -7,11 +7,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ja" suppressHydrationWarning>
-      <html lang="ja">
-      <body>
+      <body className="bg-[#54C7F3] min-h-screen antialiased overflow-y-scroll">
         {children}
       </body>
-    </html>
     </html>
   );
 }
