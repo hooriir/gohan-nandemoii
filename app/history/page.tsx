@@ -2,19 +2,19 @@ import { prisma } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 import Image from "next/image";
 import Link from "next/link";
-import Header from "@/components/Header"; // ★ Header をインポート
+import Header from "@/components/Header";
 import { redirect } from "next/navigation";
 
 export default async function HistoryPage() {
   const supabase = await createClient();
   const { data: { user: supabaseUser } } = await supabase.auth.getUser();
 
-  if (!supabaseUser || !supabaseUser.email) {
+  if (!supabaseUser || !supabaseUser.id) {
     redirect("/login");
   }
 
   const dbUser = await prisma.user.findUnique({
-    where: { email: supabaseUser.email },
+    where: { id: supabaseUser.id },
   });
 
   if (!dbUser) {
@@ -44,10 +44,8 @@ export default async function HistoryPage() {
     <div className="bg-[#54C7F3] min-h-screen flex flex-col font-sans">
       <main className="flex-1 flex flex-col items-center py-8 px-4">
         
-        {/* ★ 共通ヘッダー */}
         <Header />
 
-        {/* メインコンテンツ（白いカード領域） */}
         <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-xl max-w-2xl w-full">
           
           <h1 className="text-xl sm:text-2xl font-black text-[#54C7F3] mb-6 flex items-center justify-center gap-2 tracking-wider">

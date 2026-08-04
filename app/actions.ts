@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod"; 
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
 
 const registerSchema = z.object({
   name: z
@@ -49,6 +50,7 @@ export async function registerUser(formData: FormData) {
   }
 
   if (signUpData.user) {
+    // 登録時は Auth UUID (id) を基準にUpsert
     await prisma.user.upsert({
       where: { id: signUpData.user.id },
       update: {
@@ -79,7 +81,6 @@ export async function updateProfile(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("ログインしていません");
 
-  // ★ Google認証ユーザーかどうか判定
   const isGoogleUser =
     user.app_metadata?.provider === "google" ||
     user.identities?.some((identity) => identity.provider === "google");
@@ -104,7 +105,6 @@ export async function updateProfile(formData: FormData) {
     data: { name },
   };
 
-  // ★ Googleユーザーでない（通常ユーザー）場合のみ、メールやパスワードの更新を許可
   if (!isGoogleUser) {
     if (email && email !== user.email) {
       updateAttributes.email = email;
@@ -118,19 +118,16 @@ export async function updateProfile(formData: FormData) {
     }
   }
 
-  // 1. Supabase Auth 側の更新
   const { error: authError } = await supabase.auth.updateUser(updateAttributes);
   if (authError) {
     throw new Error(`アカウント情報の更新に失敗しました: ${authError.message}`);
   }
 
-  // 2. Prisma (DB) 側の更新
   try {
     await prisma.user.update({
       where: { id: user.id },
       data: {
         name,
-        // Googleユーザーの場合は既存のemailを固定して維持
         email: isGoogleUser ? user.email : (email || user.email),
       },
     });
@@ -148,7 +145,8 @@ const dishSchema = z.object({
 export async function createDish(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !user.email) {
+  
+  if (!user || !user.id) {
     throw new Error("認証が必要です。ログインしてください。");
   }
 
@@ -194,13 +192,14 @@ export async function createDish(formData: FormData) {
     : [];
 
   try {
-    const displayName = user.user_metadata?.name || user.email.split("@")[0] || "ユーザー";
+    const displayName = user.user_metadata?.name || user.email?.split("@")[0] || "ユーザー";
+    
     await prisma.user.upsert({
-      where: { id: user.id }, // 必ず Auth UUID を基準にする
-      update: { email: user.email },
+      where: { id: user.id },
+      update: { email: user.email || "" },
       create: {
         id: user.id,
-        email: user.email,
+        email: user.email || "",
         name: displayName,
         password: "AUTH_USER",
       },
@@ -251,15 +250,14 @@ export async function createDish(formData: FormData) {
   redirect("/menus");
 }
 
-export async function deleteDish(formData: FormData) {
+export async function deleteDish(dishId: string) {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  if (!user || !user.id) {
     throw new Error("認証が必要です。ログインしてください。");
   }
 
-  const dishId = formData.get("dishId") as string;
   if (!dishId) {
     throw new Error("料理IDが正しくありません");
   }
@@ -269,7 +267,7 @@ export async function deleteDish(formData: FormData) {
   });
 
   if (!dish) {
-    throw new Error("料理が見つかりません");
+    return;
   }
 
   if (dish.userId !== user.id) {
@@ -294,10 +292,13 @@ export async function deleteDish(formData: FormData) {
       where: { id: dishId },
     });
   } catch (prismaError) {
-    console.error("Prisma削除エラー:", prismaError);
-    const errorMessage = prismaError instanceof Error ? prismaError.message : "不明なエラー";
-    throw new Error(`データベースからの削除に失敗しました: ${errorMessage}`);
+    const existing = await prisma.dish.findUnique({ where: { id: dishId } });
+    if (existing) {
+      console.error("Prisma削除エラー:", prismaError);
+      const errorMessage = prismaError instanceof Error ? prismaError.message : "不明なエラー";
+      throw new Error(`データベースからの削除に失敗しました: ${errorMessage}`);
+    }
   }
 
-  redirect("/menus");
+  revalidatePath("/menus");
 }

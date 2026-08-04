@@ -100,7 +100,7 @@ export async function POST(request: Request) {
 
       try {
         const response = await ai.models.generateContent({
-          model: "models/gemini-1.5-flash",
+          model: "gemini-2.5-flash", 
           contents: prompt,
           config: {
             temperature: 0.7,
@@ -115,7 +115,9 @@ export async function POST(request: Request) {
           },
         });
 
-        const parsed = JSON.parse(response.text || "{}");
+        let rawText = response.text || "{}";
+        rawText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+        const parsed = JSON.parse(rawText);
         const reasonText = parsed.reason || `「${cleanKeyword}」にぴったりなメニューです！`;
 
         await prisma.dishShowLog.create({
@@ -172,7 +174,7 @@ export async function POST(request: Request) {
 
     try {
       const response = await ai.models.generateContent({
-        model: "models/gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         contents: freePrompt,
         config: {
           temperature: 0.8,
@@ -191,7 +193,9 @@ export async function POST(request: Request) {
         },
       });
 
-      const parsed = JSON.parse(response.text || "{}");
+      let rawText = response.text || "{}";
+      rawText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+      const parsed = JSON.parse(rawText);
 
       return new Response(
         JSON.stringify({

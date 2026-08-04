@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { deleteDish } from "@/app/actions";
 
 interface DeleteButtonProps {
   dishId: string;
@@ -16,12 +17,14 @@ export default function DeleteButton({
   const handleDelete = async () => {
     if (!confirm("本当に削除しますか？")) return;
 
-    if (onOptimisticDelete) {
-      onOptimisticDelete(dishId);
-    }
-
     startTransition(async () => {
       try {
+        if (onOptimisticDelete) {
+          onOptimisticDelete(dishId);
+        }
+
+        // ▼▼▼ FormDataを使わず、dishId（文字列）を直接渡す ▼▼▼
+        await deleteDish(dishId);
       } catch (error) {
         console.error("削除エラー:", error);
         alert("削除に失敗しました。");

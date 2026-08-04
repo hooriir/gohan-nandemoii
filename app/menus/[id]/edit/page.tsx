@@ -13,12 +13,12 @@ export default async function EditMenuPage({ params }: EditPageProps) {
   const supabase = await createClient();
   const { data: { user: supabaseUser } } = await supabase.auth.getUser();
 
-  if (!supabaseUser || !supabaseUser.email) {
+  if (!supabaseUser || !supabaseUser.id) {
     redirect("/login");
   }
 
   const dbUser = await prisma.user.findUnique({
-    where: { email: supabaseUser.email },
+    where: { id: supabaseUser.id },
   });
 
   if (!dbUser) {
@@ -47,12 +47,12 @@ export default async function EditMenuPage({ params }: EditPageProps) {
     const supabase = await createClient();
     const { data: { user: actionUser } } = await supabase.auth.getUser();
 
-    if (!actionUser || !actionUser.email) {
+    if (!actionUser || !actionUser.id) {
       redirect("/login");
     }
 
     const actionDbUser = await prisma.user.findUnique({
-      where: { email: actionUser.email },
+      where: { id: actionUser.id },
     });
 
     if (!actionDbUser) {
