@@ -32,6 +32,9 @@ function HomePageContent() {
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
+  // ポップアップ（モーダル）の開閉状態を管理するstate
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+
   // ログインフォーム用のstate
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -59,6 +62,17 @@ function HomePageContent() {
       subscription.unsubscribe();
     };
   }, []);
+
+  // 検索結果（result）が表示されてから3秒後に自動でポップアップを開く処理
+  useEffect(() => {
+    if (result) {
+      const timer = setTimeout(() => {
+        setIsPopupOpen(true);
+      }, 3000); // 3000ミリ秒 = 3秒後
+
+      return () => clearTimeout(timer);
+    }
+  }, [result]);
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,6 +125,7 @@ function HomePageContent() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setIsPopupOpen(false); // 新しく検索し直すときはポップアップを閉じる
 
     try {
       const response = await fetch("/api/recommend", {
@@ -163,7 +178,7 @@ function HomePageContent() {
   }
 
   // ==========================================
-  // 未ログイン時はあの画像の代わりにログイン画面を表示
+  // 未ログイン時のログイン画面
   // ==========================================
   if (!isLoggedIn) {
     return (
@@ -176,7 +191,7 @@ function HomePageContent() {
                 src="/images/gohan_bl.svg"
                 alt="ごはん？なんでもいい～"
                 width={160}
-                height={72}          
+                height={72}         
                 style={{ width: "160px", height: "auto" }}
               />
             </Link>
@@ -248,10 +263,10 @@ function HomePageContent() {
   }
 
   // ==========================================
-  // ログイン中の通常画面（変更なし）
+  // ログイン中の通常画面
   // ==========================================
   return (
-    <div className="bg-[#53cbfb] min-h-screen flex flex-col items-center p-4 text-white font-sans select-none justify-start">
+    <div className="bg-[#53cbfb] min-h-screen flex flex-col items-center p-4 text-white font-sans select-none justify-start pb-20">
       <Header />
 
       {!hasSearched ? (
@@ -355,40 +370,75 @@ function HomePageContent() {
             ) : null}
           </div>
 
-          <div className="w-full text-center mb-8 px-2">
-            <h3 className="text-lg font-black mb-3 tracking-widest text-white drop-shadow-sm">
+          <div className="w-full text-center mb-8 px-2 flex flex-col gap-3">
+            <button
+              onClick={() => setIsPopupOpen(true)}
+              className="w-full py-4 bg-[#e60012] hover:bg-[#c4000f] text-white font-black text-xl rounded-2xl shadow-lg transition-transform active:scale-95"
+            >
               もう一回やる
-            </h3>
+            </button>
             
-            <form onSubmit={onSubmit} className="flex gap-2 w-full">
-              <input 
-                type="text" 
-                placeholder="ラストチャンス！" 
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                disabled={loading}
-                className="flex-grow px-4 py-3 rounded-xl text-gray-800 bg-white shadow-md focus:outline-none focus:ring-2 focus:ring-amber-300 placeholder-gray-400 font-bold"
-              />
-              <button 
-                type="submit"
-                disabled={loading}
-                className="bg-[#e60012] hover:bg-[#c4000f] disabled:bg-gray-400 text-white font-black px-6 py-3 rounded-xl shadow-md transition-all active:scale-95 whitespace-nowrap"
-              >
-                これだ！
-              </button>
-            </form>
-
             <button 
               onClick={() => {
                 setHasSearched(false);
                 setKeyword("");
                 setResult(null);
               }}
-              className="mt-6 text-sm font-bold underline hover:text-white/80"
+              className="text-sm font-bold underline hover:text-white/80 mt-2"
             >
               トップ（検索前）に戻る
             </button>
           </div>
+        </div>
+      )}
+
+      {isPopupOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0">
+          <div className="bg-white w-full max-w-lg rounded-t-3xl p-6 shadow-2xl text-gray-800 animate-[slideUp_0.3s_ease-out_forwards]">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-black text-slate-700 tracking-wider">
+                もう一回やる？
+              </h3>
+              <button 
+                onClick={() => setIsPopupOpen(false)}
+                className="text-gray-400 hover:text-gray-600 font-bold text-xl px-2 py-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={onSubmit} className="space-y-4">
+              <input 
+                type="text" 
+                placeholder="ラストチャンス！気分を入力..." 
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                disabled={loading}
+                className="w-full px-4 py-3 rounded-xl text-gray-800 bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#53cbfb] placeholder-gray-400 font-bold"
+              />
+              <button 
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 bg-[#e60012] hover:bg-[#c4000f] disabled:bg-gray-400 text-white font-black rounded-xl shadow-md transition-all active:scale-95"
+              >
+                これだ！
+              </button>
+            </form>
+          </div>
+          
+          {/* 下からスライドアップするアニメーションの定義 */}
+          <style jsx>{`
+            @keyframes slideUp {
+              from {
+                transform: translateY(100%);
+                opacity: 0;
+              }
+              to {
+                transform: translateY(0);
+                opacity: 1;
+              }
+            }
+          `}</style>
         </div>
       )}
     </div>
