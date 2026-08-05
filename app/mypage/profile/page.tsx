@@ -107,11 +107,13 @@ export default function ProfilePage() {
             </h2>
 
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-8 text-[#54C7F3]">
-                <div className="w-8 h-8 border-4 border-[#54C7F3] border-t-transparent rounded-full animate-spin mb-2" />
-                <p className="font-bold text-xs tracking-widest text-slate-400">読み込み中...</p>
-              </div>
-            ) : !isEditing ? (
+            <div className="flex flex-col items-center justify-center text-[#54C7F3] min-h-[300px]">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#54C7F3] mb-4"></div>
+              <p className="font-bold text-xs tracking-widest text-gray-400">
+                プロフィールを読み込んでいます...
+              </p>
+            </div>
+          ) : !isEditing ? (
               <div className="text-center space-y-3 w-full max-w-sm">
                 <h3 className="text-2xl font-black text-gray-800 tracking-wide mb-4">{name || '名前未設定'}</h3>
                 <p className="text-sm text-gray-600 font-medium">メールアドレス：{email}</p>

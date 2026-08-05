@@ -56,26 +56,39 @@ export async function POST(request: Request) {
       include: { tags: true },
     });
 
-    let availableDishes = userDishes.filter(
+    if (userDishes.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "登録されているメニューがありません。先にメニューを追加してください。" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const availableDishes = userDishes.filter(
       (dish) => !excludedDishIds.includes(dish.id)
     );
 
-    if (availableDishes.length === 0 && userDishes.length > 0) {
-      availableDishes = userDishes;
-    }
+    let targetDishes: typeof userDishes = [];
 
-    // ==========================================
-    // Pattern A: ユーザー登録メニューが存在する場合
-    // ==========================================
-    if (availableDishes.length > 0) {
-      let targetDishes = availableDishes;
-      if (cleanKeyword !== "なんでもいい") {
-        const searchKeywords = cleanKeyword
-          .replace(/[,，、]/g, " ")
-          .split(/\s+/)
-          .filter((k: string) => k.length > 0);
+    if (cleanKeyword === "なんでもいい") {
+      targetDishes = availableDishes.length > 0 ? availableDishes : userDishes;
+    } else {
+      const searchKeywords = cleanKeyword
+        .replace(/[,，、]/g, " ")
+        .split(/\s+/)
+        .filter((k: string) => k.length > 0);
 
-        const matched = availableDishes.filter((dish) =>
+      const matchedAvailable = availableDishes.filter((dish) =>
+        searchKeywords.every(
+          (kw: string) =>
+            dish.name.includes(kw) ||
+            dish.tags.some((t) => t.name.includes(kw))
+        )
+      );
+
+      if (matchedAvailable.length > 0) {
+        targetDishes = matchedAvailable;
+      } else {
+        const matchedAll = userDishes.filter((dish) =>
           searchKeywords.every(
             (kw: string) =>
               dish.name.includes(kw) ||
@@ -83,112 +96,40 @@ export async function POST(request: Request) {
           )
         );
 
-        if (matched.length > 0) {
-          targetDishes = matched;
+        if (matchedAll.length > 0) {
+          targetDishes = matchedAll;
         } else {
-          targetDishes = availableDishes;
+          return new Response(
+            JSON.stringify({ error: `「${cleanKeyword}」に一致する登録メニューが見つかりませんでした。` }),
+            { status: 400, headers: { "Content-Type": "application/json" } }
+          );
         }
       }
+    }
 
-      const selectedDish = targetDishes[Math.floor(Math.random() * targetDishes.length)];
+    const selectedDish = targetDishes[Math.floor(Math.random() * targetDishes.length)];
 
-      const prompt = `あなたは献立提案アシスタントです。
+    const prompt = `あなたは献立提案アシスタントです。
 ユーザーの要望: 「${cleanKeyword}」
 選ばれた料理: 「${selectedDish.name}」
 
 この料理がユーザーの要望や今の気分にどのように合っているか、親しみやすく50文字程度で「おすすめの理由」を作成してください。`;
 
-      try {
-        const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash", 
-          contents: prompt,
-          config: {
-            temperature: 0.7,
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: "OBJECT",
-              properties: {
-                reason: { type: "STRING", description: "選んだ理由" },
-              },
-              required: ["reason"],
-            },
-          },
-        });
-
-        let rawText = response.text || "{}";
-        rawText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
-        const parsed = JSON.parse(rawText);
-        const reasonText = parsed.reason || `「${cleanKeyword}」にぴったりなメニューです！`;
-
-        await prisma.dishShowLog.create({
-          data: {
-            userId: userId,
-            dishId: selectedDish.id,
-            keyword: cleanKeyword,
-          },
-        });
-
-        return new Response(
-          JSON.stringify({
-            dish: {
-              id: selectedDish.id,
-              name: selectedDish.name,
-              imageUrl: selectedDish.imageUrl || null,
-            },
-            reason: reasonText,
-            isAiGeneration: false,
-          }),
-          { headers: { "Content-Type": "application/json" } }
-        );
-
-      } catch (aiError) {
-        console.warn("Gemini APIエラーのためフォールバックします:", aiError);
-
-        await prisma.dishShowLog.create({
-          data: {
-            userId: userId,
-            dishId: selectedDish.id,
-            keyword: cleanKeyword,
-          },
-        });
-
-        return new Response(
-          JSON.stringify({
-            dish: {
-              id: selectedDish.id,
-              name: selectedDish.name,
-              imageUrl: selectedDish.imageUrl || null,
-            },
-            reason: `「${cleanKeyword}」にぴったりなメニューです！`,
-            isAiGeneration: false,
-          }),
-          { headers: { "Content-Type": "application/json" } }
-        );
-      }
-    }
-
-    // ==========================================
-    // Pattern B: メニュー0件時の自由提案
-    // ==========================================
-    const freePrompt = `ユーザーの希望キーワードは「${cleanKeyword}」です。今日のごはんのおすすめメニューを1つ提案してください。「${cleanKeyword}」に合ったジャンルや味付けの料理を選んでください。`;
+    let reasonText = `「${cleanKeyword}」にぴったりなメニューです！`;
 
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: freePrompt,
+        model: "gemini-2.5-flash", 
+        contents: prompt,
         config: {
-          temperature: 0.8,
+          temperature: 0.7,
           responseMimeType: "application/json",
           responseSchema: {
             type: "OBJECT",
             properties: {
-              name: { type: "STRING", description: "料理名" },
-              reason: {
-                type: "STRING",
-                description: "おすすめの理由（50文字程度で親しみやすく）",
-              },
+              reason: { type: "STRING", description: "選んだ理由" },
             },
-            required: ["name", "reason"],
+            required: ["reason"],
           },
         },
       });
@@ -196,33 +137,34 @@ export async function POST(request: Request) {
       let rawText = response.text || "{}";
       rawText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
       const parsed = JSON.parse(rawText);
-
-      return new Response(
-        JSON.stringify({
-          dish: {
-            name: parsed.name || "きつねうどん",
-          },
-          reason:
-            parsed.reason ||
-            `「${cleanKeyword}」に合わせて作ってみるのはいかがでしょうか？`,
-          isAiGeneration: true,
-        }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    } catch (patternBError) {
-      console.error("Pattern B AI生成エラー:", patternBError);
-
-      return new Response(
-        JSON.stringify({
-          dish: {
-            name: "カレーライス",
-          },
-          reason: `「${cleanKeyword}」な気分の時は定番のカレーがおすすめです！`,
-          isAiGeneration: true,
-        }),
-        { headers: { "Content-Type": "application/json" } }
-      );
+      if (parsed.reason) {
+        reasonText = parsed.reason;
+      }
+    } catch (aiError) {
+      console.warn("Gemini APIの理由生成でエラーが発生しましたが継続します:", aiError);
     }
+
+    await prisma.dishShowLog.create({
+      data: {
+        userId: userId,
+        dishId: selectedDish.id,
+        keyword: cleanKeyword,
+      },
+    });
+
+    return new Response(
+      JSON.stringify({
+        dish: {
+          id: selectedDish.id,
+          name: selectedDish.name,
+          imageUrl: selectedDish.imageUrl || null,
+        },
+        reason: reasonText,
+        isAiGeneration: false,
+      }),
+      { headers: { "Content-Type": "application/json" } }
+    );
+
   } catch (error) {
     console.error("Recommend API Error:", error);
     return new Response(

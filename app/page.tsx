@@ -426,7 +426,6 @@ function HomePageContent() {
             </form>
           </div>
           
-          {/* 下からスライドアップするアニメーションの定義 */}
           <style jsx>{`
             @keyframes slideUp {
               from {

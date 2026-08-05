@@ -18,7 +18,6 @@ export default async function MenusPage() {
     supabaseUser.email?.split("@")[0] ||
     "ユーザー";
 
-  // ★【安全対策】Prisma User が未作成の場合に自動補完（Auth UUIDで一貫）
   await prisma.user.upsert({
     where: { id: userId },
     update: { email: supabaseUser.email || "" },
