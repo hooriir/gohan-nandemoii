@@ -4,12 +4,14 @@ import React, { useRef, useState, useEffect } from "react";
 import Button from "@/components/Button";
 import { createDish } from "@/app/actions";
 import { Dish } from "./MenuListManager";
+import { useRouter } from "next/navigation";
 
 interface DishFormProps {
   addOptimisticDish?: (dish: Dish) => void;
 }
 
 export default function DishForm({ addOptimisticDish }: DishFormProps) {
+  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,8 +77,10 @@ export default function DishForm({ addOptimisticDish }: DishFormProps) {
       formRef.current?.reset();
       setPreviewUrl(null);
 
-      // Server Action を実行 (戻り値による型エラーを防ぎ、例外は catch でハンドリング)
       await createDish(formData);
+
+      router.refresh();
+      
     } catch (error: unknown) {
       if (
         typeof error === "object" &&
@@ -97,7 +101,7 @@ export default function DishForm({ addOptimisticDish }: DishFormProps) {
 
   return (
     <form ref={formRef} action={handleAction} className="flex flex-col gap-4 max-w-sm mx-auto">
-      {/* エラーメッセージ表示エリア */}
+
       {errorMessage && (
         <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-semibold leading-relaxed">
           {errorMessage}

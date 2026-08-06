@@ -115,11 +115,12 @@ export async function POST(request: Request) {
 
 この料理がユーザーの要望や今の気分にどのように合っているか、親しみやすく50文字程度で「おすすめの理由」を作成してください。`;
 
+    let isAiSuccess = false;
     let reasonText = `「${cleanKeyword}」にぴったりなメニューです！`;
 
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash", 
+        model: "gemini-1.5-flash",
         contents: prompt,
         config: {
           temperature: 0.7,
@@ -139,6 +140,7 @@ export async function POST(request: Request) {
       const parsed = JSON.parse(rawText);
       if (parsed.reason) {
         reasonText = parsed.reason;
+        isAiSuccess = true;
       }
     } catch (aiError) {
       console.warn("Gemini APIの理由生成でエラーが発生しましたが継続します:", aiError);
@@ -160,7 +162,7 @@ export async function POST(request: Request) {
           imageUrl: selectedDish.imageUrl || null,
         },
         reason: reasonText,
-        isAiGeneration: false,
+        isAiGeneration: isAiSuccess, // ★ ここを連動させる
       }),
       { headers: { "Content-Type": "application/json" } }
     );

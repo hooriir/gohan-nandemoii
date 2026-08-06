@@ -32,16 +32,15 @@ function HomePageContent() {
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // ポップアップ（モーダル）の開閉状態を管理するstate
   const [isPopupOpen, setIsPopupOpen] = useState(false);
 
-  // ログインフォーム用のstate
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isLoggedIn = !!userId;
+  const isTimeout = searchParams.get("reason") === "timeout";
 
   useEffect(() => {
     const supabase = createClient();
@@ -63,16 +62,45 @@ function HomePageContent() {
     };
   }, []);
 
-  // 検索結果（result）が表示されてから3秒後に自動でポップアップを開く処理
   useEffect(() => {
     if (result) {
       const timer = setTimeout(() => {
         setIsPopupOpen(true);
-      }, 3000); // 3000ミリ秒 = 3秒後
+      }, 3000);
 
       return () => clearTimeout(timer);
     }
   }, [result]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    let timeoutId: NodeJS.Timeout;
+
+    const logoutUser = async () => {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      router.push("/?reason=timeout");
+    };
+
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(logoutUser, 30 * 60 * 1000);
+    };
+
+    window.addEventListener("mousemove", resetTimer);
+    window.addEventListener("keydown", resetTimer);
+    window.addEventListener("click", resetTimer);
+
+    resetTimer();
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener("mousemove", resetTimer);
+      window.removeEventListener("keydown", resetTimer);
+      window.removeEventListener("click", resetTimer);
+    };
+  }, [isLoggedIn, router]);
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,7 +153,7 @@ function HomePageContent() {
     setLoading(true);
     setError(null);
     setResult(null);
-    setIsPopupOpen(false); // 新しく検索し直すときはポップアップを閉じる
+    setIsPopupOpen(false);
 
     try {
       const response = await fetch("/api/recommend", {
@@ -190,14 +218,20 @@ function HomePageContent() {
               <Image
                 src="/images/gohan_bl.svg"
                 alt="ごはん？なんでもいい～"
-                width={160}
-                height={72}         
-                style={{ width: "160px", height: "auto" }}
+                width={200}
+                height={62}         
+                style={{ width: "200px", height: "auto" }}
               />
             </Link>
           </h1>
         
           <h2 className="text-xl font-bold text-slate-700 mb-6">ログイン</h2>
+
+          {isTimeout && (
+          <div className="bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold p-3 rounded-xl mb-4 text-center">
+            長時間操作がなかったため、自動ログアウトしました。
+          </div>
+        )}
 
           {loginError && (
             <p className="bg-red-50 text-red-600 border border-red-200 text-sm font-medium py-2 px-3 rounded-xl mb-4 text-left whitespace-pre-wrap">
@@ -394,7 +428,7 @@ function HomePageContent() {
 
       {isPopupOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0">
-          <div className="bg-white w-full max-w-lg rounded-t-3xl p-6 shadow-2xl text-gray-800 animate-[slideUp_0.3s_ease-out_forwards]">
+          <div className="bg-white w-full max-w-lg rounded-t-3xl p-6 shadow-2xl text-gray-800 animate-slide-up">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-black text-slate-700 tracking-wider">
                 もう一回やる？
@@ -425,19 +459,6 @@ function HomePageContent() {
               </button>
             </form>
           </div>
-          
-          <style jsx>{`
-            @keyframes slideUp {
-              from {
-                transform: translateY(100%);
-                opacity: 0;
-              }
-              to {
-                transform: translateY(0);
-                opacity: 1;
-              }
-            }
-          `}</style>
         </div>
       )}
     </div>
