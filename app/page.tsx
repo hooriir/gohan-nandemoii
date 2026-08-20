@@ -37,9 +37,14 @@ function HomePageContent() {
     const supabase = createClient();
 
     async function checkInitialUser() {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUserId(user?.id || null);
-      setAuthChecking(false);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setUserId(session?.user?.id || null);
+      } catch (err) {
+        console.error("Auth check error:", err);
+      } finally {
+        setAuthChecking(false);
+      }
     }
     checkInitialUser();
 
@@ -167,16 +172,16 @@ function HomePageContent() {
       {!hasSearched ? (
         <div className="w-full max-w-xl text-center py-12 flex flex-col items-center">
           <p className="text-2xl font-black mb-8 tracking-wider">今日のごはんは．．．？</p>
-          
+
           <form onSubmit={onSubmit} className="w-full px-2 flex flex-col gap-4">
-            <input 
-              type="text" 
-              placeholder="さっぱり、こってり、なんでもいい..." 
+            <input
+              type="text"
+              placeholder="さっぱり、こってり、なんでもいい..."
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               className="w-full px-4 py-4 rounded-2xl text-gray-800 bg-white shadow-md focus:outline-none text-center text-lg font-bold placeholder-gray-400"
             />
-            <button 
+            <button
               type="submit"
               className="w-full py-4 bg-[#e60012] hover:bg-[#c4000f] text-white font-black text-xl rounded-2xl shadow-lg transition-transform active:scale-95"
             >
@@ -195,8 +200,8 @@ function HomePageContent() {
               <div className="py-16 flex flex-col items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#53cbfb] mb-4"></div>
                 <p className="text-gray-500 font-bold">
-                  {keyword === "なんでもいい" 
-                    ? "AIシェフが今日の気分を分析中..." 
+                  {keyword === "なんでもいい"
+                    ? "AIシェフが今日の気分を分析中..."
                     : `「${keyword}」から最高の1品を選び中...`}
                 </p>
               </div>
@@ -204,7 +209,7 @@ function HomePageContent() {
               <div className="py-12 text-center">
                 <p className="text-red-500 font-bold mb-4">エラーが発生しました</p>
                 <p className="text-sm text-gray-600 mb-6">{error}</p>
-                <button 
+                <button
                   onClick={() => handleSearch(keyword)}
                   className="px-6 py-2 bg-[#53cbfb] text-white rounded-full font-bold shadow hover:bg-[#42b7e6]"
                 >
@@ -219,11 +224,11 @@ function HomePageContent() {
 
                 <div className="w-full h-56 md:h-64 rounded-2xl overflow-hidden mb-6 flex items-center justify-center bg-gray-50 border border-gray-100 relative">
                   {result.dish.imageUrl ? (
-                    <Image 
-                      src={result.dish.imageUrl} 
-                      alt={result.dish.name} 
-                      fill 
-                      sizes="(max-width: 768px) 100vw, 500px" 
+                    <Image
+                      src={result.dish.imageUrl}
+                      alt={result.dish.name}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 500px"
                       className="object-contain"
                     />
                   ) : (
@@ -272,8 +277,8 @@ function HomePageContent() {
             >
               もう一回やる
             </button>
-            
-            <button 
+
+            <button
               onClick={() => {
                 setHasSearched(false);
                 setKeyword("");
@@ -294,7 +299,7 @@ function HomePageContent() {
               <h3 className="text-lg font-black text-slate-700 tracking-wider">
                 もう一回やる？
               </h3>
-              <button 
+              <button
                 onClick={() => setIsPopupOpen(false)}
                 className="text-gray-400 hover:text-gray-600 font-bold text-xl px-2 py-1"
               >
@@ -303,15 +308,15 @@ function HomePageContent() {
             </div>
 
             <form onSubmit={onSubmit} className="space-y-4">
-              <input 
-                type="text" 
-                placeholder="ラストチャンス！気分を入力..." 
+              <input
+                type="text"
+                placeholder="ラストチャンス！気分を入力..."
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 disabled={loading}
                 className="w-full px-4 py-3 rounded-xl text-gray-800 bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#53cbfb] placeholder-gray-400 font-bold"
               />
-              <button 
+              <button
                 type="submit"
                 disabled={loading}
                 className="w-full py-3 bg-[#e60012] hover:bg-[#c4000f] disabled:bg-gray-400 text-white font-black rounded-xl shadow-md transition-all active:scale-95"
